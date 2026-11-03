@@ -3,12 +3,16 @@
 set -eu
 umask 077
 
-TAG=v0.2.0-rc.5
+TAG=v0.2.0-rc.6
 REPO=nghianguyen150612/MicroScale
 DAEMON=/usr/sbin/tailscaled
 CLI=/usr/bin/tailscale
-STATE=/var/lib/microscale
+STATE=/etc/microscale
 ORIGINAL=$STATE/original
+MANAGER_DIR=/usr/lib/microscale
+MANAGER=$MANAGER_DIR/manager.sh
+COMMAND=/usr/bin/microscale
+LEGACY_STATE=/var/lib/microscale
 STAGE=""
 MODIFIED=0
 COMMITTED=0
@@ -34,8 +38,13 @@ require_platform() {
     [ "$(id -u)" = 0 ] || die 'Root required for file installation'
     case "$(uname -m)" in aarch64|arm64) ;; *) die 'Persistent installer only supports OpenWrt ARM64' ;; esac
     [ -d /overlay ] || die 'OpenWrt overlay missing; refusing to modify this host'
-    [ -d /usr/sbin ] && [ -d /usr/bin ] || die 'Missing system binary directories'
+    [ -d /usr/sbin ] && [ -d /usr/bin ] && [ -d /usr/lib ] || die 'Missing OpenWrt binary directories'
     is_tmpfs /tmp || die '/tmp must be tmpfs for staging'
+    # Older releases stored backups under /var/lib, which can be volatile on OpenWrt.
+    # Never silently replace or abandon an existing RC5 rollback record.
+    if [ -f "$LEGACY_STATE/install-state" ] && [ ! -f "$STATE/install-state" ]; then
+        die 'Existing RC5 state detected in /var/lib/microscale; back it up and migrate before upgrading'
+    fi
 }
 ask() {
     [ -r /dev/tty ] || die 'Interactive terminal required'
@@ -58,27 +67,35 @@ choose_profile() {
     fi
     case "$selected" in small|micro|extreme) ;; *) die 'Unknown profile' ;; esac
 }
+restore_entry() {
+    snapshot="$1"
+    target="$2"
+    if exists "$snapshot"; then
+        cp -a "$snapshot" "$target.restore.$$" &&
+          mv -f "$target.restore.$$" "$target" || return 1
+    else
+        rm -f "$target" || return 1
+    fi
+}
 cleanup() {
     code="$1"
     trap - 0
     if [ "$code" -ne 0 ] && [ "$MODIFIED" = 1 ] && [ "$COMMITTED" = 0 ]; then
-        info 'Restoring staged pre-install binaries after error'
-        if exists "$STAGE/previous-daemon"; then
-            cp -a "$STAGE/previous-daemon" "$DAEMON.restore.$$" &&
-              mv -f "$DAEMON.restore.$$" "$DAEMON" || true
-        else
-            rm -f "$DAEMON"
-        fi
-        if exists "$STAGE/previous-cli"; then
-            cp -a "$STAGE/previous-cli" "$CLI.restore.$$" &&
-              mv -f "$CLI.restore.$$" "$CLI" || true
-        else
-            rm -f "$CLI"
-        fi
+        info 'Restoring files from the RAM transaction snapshot'
+        restore_entry "$STAGE/previous-daemon" "$DAEMON" ||
+            info 'WARNING: Tailscale daemon rollback failed; verify manually'
+        restore_entry "$STAGE/previous-cli" "$CLI" ||
+            info 'WARNING: Tailscale CLI rollback failed; verify manually'
+        restore_entry "$STAGE/previous-manager" "$MANAGER" ||
+            info 'WARNING: manager rollback failed; verify manually'
+        restore_entry "$STAGE/previous-command" "$COMMAND" ||
+            info 'WARNING: microscale command rollback failed; verify manually'
     fi
-    # Remove only staging names reserved by this invocation.
-    rm -f "$DAEMON.next.$" "$CLI.next.$" "$DAEMON.restore.$" "$CLI.restore.$"
-    [ -z "$STAGE" ] || rm -rf "$STAGE"
+    if [ -n "$STAGE" ]; then
+        rm -f "$DAEMON.next.$$" "$CLI.next.$$" "$DAEMON.restore.$$" "$CLI.restore.$$"
+        rm -f "$MANAGER.next.$$" "$MANAGER.restore.$$" "$COMMAND.next.$$" "$COMMAND.restore.$$"
+        rm -rf "$STAGE"
+    fi
     exit "$code"
 }
 trap 'cleanup $?' 0
@@ -92,6 +109,17 @@ prepare_stage() {
 snapshot_previous() {
     if exists "$DAEMON"; then cp -a "$DAEMON" "$STAGE/previous-daemon"; fi
     if exists "$CLI"; then cp -a "$CLI" "$STAGE/previous-cli"; fi
+    if exists "$MANAGER"; then cp -a "$MANAGER" "$STAGE/previous-manager"; fi
+    if exists "$COMMAND"; then cp -a "$COMMAND" "$STAGE/previous-command"; fi
+}
+ensure_command_available() {
+    # Never overwrite an unrelated executable or command named microscale.
+    if exists "$COMMAND"; then
+        if [ ! -L "$COMMAND" ] ||
+           [ "$(readlink "$COMMAND")" != "$MANAGER" ]; then
+            die "$COMMAND is already used by another program"
+        fi
+    fi
 }
 save_original() {
     # Initial originals and state persist for uninstall, as in Beszel's manager.
@@ -107,7 +135,7 @@ save_original() {
     # Never overwrite a previous partial backup while state is missing.
     if exists "$ORIGINAL/tailscaled" || exists "$ORIGINAL/tailscale" ||
        [ -f "$ORIGINAL/no-daemon" ] || [ -f "$ORIGINAL/no-cli" ]; then
-        die 'Original backup exists without install-state; inspect /var/lib/microscale before retrying'
+        die 'Original backup exists without install-state; inspect /etc/microscale before retrying'
     fi
     if exists "$DAEMON"; then cp -a "$DAEMON" "$ORIGINAL/tailscaled" || die 'Cannot preserve original daemon'; else : > "$ORIGINAL/no-daemon"; fi
     if exists "$CLI"; then cp -a "$CLI" "$ORIGINAL/tailscale" || die 'Cannot preserve original CLI'; else : > "$ORIGINAL/no-cli"; fi
@@ -143,7 +171,10 @@ check_space() {
             original_bytes=$((original_bytes + cli_size))
         fi
     fi
-    required=$(( (size + original_bytes + 1023) / 1024 + 8192 ))
+    # Reserve space for on-flash binary staging, the original backup,
+    # the manager executable, and existing filesystem overhead.
+    manager_bytes="$(wc -c < "$0" | tr -d ' ')"
+    required=$(( (size + original_bytes + manager_bytes + 1023) / 1024 + 8192 ))
     free_kib="$(df -k /overlay | awk 'NR==2 {print $4}')"
     case "$free_kib" in ''|*[!0-9]*) die 'Cannot read overlay free space' ;; esac
     [ "$free_kib" -gt "$required" ] || die "Not enough overlay for binary and persistent rollback backup ($free_kib KiB free; need >$required KiB)"
@@ -160,32 +191,35 @@ install_binary() {
     fi
     ask 'Proceed? [y/N]: '
     case "$answer" in y|Y|yes|YES) ;; *) info 'Cancelled'; return 0 ;; esac
+    ensure_command_available
     prepare_stage
     download_binary "$selected"
     check_space
     snapshot_previous
     save_original
+    mkdir -p "$MANAGER_DIR" || die 'Cannot create manager directory'
 
-    # Both new paths are staged on the same mounted destination filesystem.
+    # New binaries and manager are staged on their destination filesystems.
     cp "$STAGE/microscale" "$DAEMON.next.$$" || die 'Cannot stage executable'
     chmod 755 "$DAEMON.next.$$"
-    ln -s "$DAEMON" "$CLI.next.$$" || die 'Cannot stage CLI symlink'
+    ln -s "$DAEMON" "$CLI.next.$" || die 'Cannot stage CLI symlink'
+    cp "$0" "$MANAGER.next.$" || die 'Cannot stage lifecycle manager'
+    chmod 755 "$MANAGER.next.$" || die 'Cannot make manager executable'
+    ln -s "$MANAGER" "$COMMAND.next.$" || die 'Cannot stage microscale CLI symlink'
     hash1="$(sha256sum "$STAGE/microscale" | awk '{print $1}')"
     hash2="$(sha256sum "$DAEMON.next.$$" | awk '{print $1}')"
     [ "$hash1" = "$hash2" ] || die 'NAND staging checksum mismatch'
     MODIFIED=1
     mv -f "$DAEMON.next.$$" "$DAEMON" || die 'Cannot install executable'
     mv -f "$CLI.next.$$" "$CLI" || die 'Cannot install CLI'
-    # State and canonical manager persist for future diagnostics/repair.
-    mkdir -p "$STATE"
-    if [ -f "$0" ]; then
-        cp "$0" "$STATE/manager.sh.next.$$" &&
-          mv -f "$STATE/manager.sh.next.$$" "$STATE/manager.sh" || die 'Cannot persist lifecycle manager'
-    fi
-    printf 'profile=%s\nrelease=%s\n' "$selected" "$TAG" > "$STATE/install-state.next.$$"
+    # Keep a dedicated manager under /usr/lib and user-facing CLI in /usr/bin.
+    mv -f "$MANAGER.next.$" "$MANAGER" || die 'Cannot install lifecycle manager'
+    mv -f "$COMMAND.next.$" "$COMMAND" || die 'Cannot install microscale command'
+    printf 'profile=%s\nrelease=%s\n' "$selected" "$TAG" > "$STATE/install-state.next.$"
     mv -f "$STATE/install-state.next.$$" "$STATE/install-state" || die 'Cannot save install state'
     COMMITTED=1
-    info "Installed $selected ($TAG); manager: $STATE/manager.sh"
+    info "Installed $selected ($TAG); run: microscale status"
+    info "Manager: $MANAGER | State: $STATE"
     info 'Existing daemon process is unchanged until you manually restart it'
 }
 status() {
