@@ -47,6 +47,10 @@ if kill -0 "$pid" 2>/dev/null; then
   daemon_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$pid/status" 2>/dev/null || true)"
   [[ -n "$daemon_rss" ]] || daemon_rss=NA
 fi
+if [[ "$daemon_rss" == NA ]]; then
+  echo "WARNING: $profile native daemon exited or RSS unavailable (not device-qualified)" >&2
+  sed -n '1,100p' "$log" >&2
+fi
 kill "$pid" 2>/dev/null || true
 wait "$pid" 2>/dev/null || true
 
