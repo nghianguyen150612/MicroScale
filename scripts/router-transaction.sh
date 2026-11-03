@@ -64,13 +64,22 @@ case "$action" in
     old_sum="$(sha256sum "$candidate" | awk '{print $1}')"
     [ -n "$old_sum" ] || fail "cannot hash candidate"
     # Write temporary copy on UBIFS. Rename is confined to /usr/sbin.
-    cp "$candidate" /usr/sbin/.microscale-next.new
+    if ! cp "$candidate" /usr/sbin/.microscale-next.new; then
+        rm -f /usr/sbin/.microscale-next.new
+        fail "cannot stage executable on NAND"
+    fi
     chmod 755 /usr/sbin/.microscale-next.new
-    [ "$(sha256sum /usr/sbin/.microscale-next.new | awk '{print $1}')" = "$old_sum" ] ||
-      fail "NAND copy checksum mismatch"
+    if [ "$(sha256sum /usr/sbin/.microscale-next.new | awk '{print $1}')" != "$old_sum" ]; then
+        rm -f /usr/sbin/.microscale-next.new
+        fail "NAND copy checksum mismatch"
+    fi
     mv -f /usr/sbin/.microscale-next.new "$old_daemon"
     # Upstream combined binary selects CLI when invoked as 'tailscale'.
-    ln -sf /usr/sbin/tailscaled "$old_cli"
+    if ! ln -sf /usr/sbin/tailscaled "$old_cli"; then
+        say "CLI symlink failed; restoring"
+        restore
+        exit 1
+    fi
     if ! "$service" restart; then
         say "restart failed, restoring"
         restore
