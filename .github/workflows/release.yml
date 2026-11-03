@@ -44,8 +44,21 @@ jobs:
           if [ "${{ matrix.profile }}" = extreme ]; then
             sudo apt-get install -y upx-ucl
           fi
-      - name: Build pinned upstream for ARM64
-        run: TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"
+      - name: Build pinned upstream for ARM64 (retry transient download failures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Build failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "Build attempt $attempt failed; retrying transient upstream download failures..."
+            sleep 15
+          done
       - name: Verify ELF and checksums
         shell: bash
         run: |
