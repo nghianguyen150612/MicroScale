@@ -14,6 +14,22 @@ Measurements: GitHub Actions [PR #3](https://github.com/nghianguyen150612/MicroS
 
 The reduced profiles intentionally omit userspace networking; the no-login userspace daemon benchmark cannot run, showing `NA` for daemon RSS. A real OpenWrt kernel-TUN test is mandatory before approving either profile. CI CLI smoke tests do not establish Exit Node, Subnet Router, login, MagicDNS or Tailscale SSH compatibility.
 
+## One-command interactive install (OpenWrt ARM64)
+
+**Release candidate:** `v0.2.0-rc.2`. SSH into the router **over local LAN**, as root. Paste this single command:
+
+```sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.2/install.sh && sh /tmp/microscale-install.sh
+```
+
+The installer presents a menu: `1 = Safe`, `2 = Small`, `3 = Extreme`. It requires confirmation, downloads a release asset and SHA256 checksum, verifies the archive and executable, checks the ARM64 target and available NAND space, and atomically installs the combined binary as `/usr/sbin/tailscaled` plus a `/usr/bin/tailscale` symlink.
+
+**Only the Tailscale binaries are installed or replaced.** It does **not** install dependencies, enable/start/restart the service, run `tailscale up`, modify auth state, DNS, firewall, network, init files, or configure Exit Node/Subnet Router. The user manages service startup and Tailscale configuration afterward. An already-running daemon continues using its previous executable until the user restarts it.
+
+Original executable copies are temporarily saved under `/tmp/microscale-backup.*` for recovery during the current boot only. Installer refuses non-ARM64 targets and unsupported filesystem setups. Small/Extreme have NOT been functionally qualified on NR3053; they may lack required functions. **This release is experimental, not production-qualified.**
+
+Read [installer details](docs/ONE-CLICK-INSTALL.md) and [release policy](docs/RELEASE-POLICY.md). Do not install through your only Tailscale management connection.
+
 ## Build on Linux
 
 Use a Go toolchain compatible with upstream, Git, Bash, GNU binutils and UPX for the Extreme profile. Upstream's pinned toolchain is invoked via `TS_USE_TOOLCHAIN=1`.
