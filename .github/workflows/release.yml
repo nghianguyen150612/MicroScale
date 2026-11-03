@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.4"
+        description: "Prerelease tag such as v0.2.0-rc.5"
         required: true
-        default: "v0.2.0-rc.4"
+        default: "v0.2.0-rc.5"
 
 permissions:
   contents: read
@@ -37,6 +37,7 @@ jobs:
           bash tests/test_profiles.sh
           bash tests/test_installer.sh
           bash tests/test_ram.sh
+          bash tests/test_manager.sh
       - name: Install packer if needed
         shell: bash
         run: |
@@ -96,7 +97,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.4' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.5' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -111,12 +112,15 @@ jobs:
           set -euo pipefail
           sh -n scripts/install.sh
           sh -n scripts/ram-test.sh
+          sh -n scripts/manager.sh
+          bash tests/test_manager.sh
+          cp scripts/manager.sh release-assets/manager.sh
           cp scripts/install.sh release-assets/install.sh
           sed -i "s|^RELEASE_TAG=.*|RELEASE_TAG=$TAG|" release-assets/install.sh
           cp scripts/ram-test.sh release-assets/ram-test.sh
           sed -i "s|^RELEASE_TAG=.*|RELEASE_TAG=$TAG|" release-assets/ram-test.sh
           chmod 644 release-assets/install.sh release-assets/ram-test.sh
-          (cd release-assets && sha256sum install.sh > install.sh.sha256 && sha256sum ram-test.sh > ram-test.sh.sha256)
+          (cd release-assets && sha256sum install.sh > install.sh.sha256 && sha256sum ram-test.sh > ram-test.sh.sha256 && sha256sum manager.sh > manager.sh.sha256)
       - name: Validate candidate and download checksums
         shell: bash
         run: |
@@ -128,7 +132,14 @@ jobs:
           cd release-assets
           sha256sum -c install.sh.sha256
           sha256sum -c ram-test.sh.sha256
+          sha256sum -c manager.sh.sha256
+          # Bootstrap and manager must use exactly the published version;
+          # future tags require editing the reviewed source pin first.
           grep -Fx "RELEASE_TAG=$TAG" install.sh
+          grep -Fx "TAG=$TAG" manager.sh
+          pinned="$(sed -n 's/^engine_sha=//p' install.sh)"
+          actual="$(sha256sum manager.sh | awk '{print $1}')"
+          test "$pinned" = "$actual"
           grep -Fx "RELEASE_TAG=$TAG" ram-test.sh
           for profile in small micro extreme; do
             for arch in arm64 amd64; do
@@ -139,26 +150,23 @@ jobs:
         shell: bash
         run: |
           cat > notes.md <<NOTES
-          # MicroScale $TAG (prerelease)
+          # MicroScale $TAG
 
-          Tailscale v1.104.5 builds for Linux ARM64 and x86_64 (AMD64).
-          Profiles: Small (full features), Micro (reduced), Extreme (reduced + UPX).
-          Archives contain the upstream license, build metadata, and SHA256 checksums.
+          ARM64 and x86_64 builds from pinned Tailscale v1.104.5.
+          Profiles: Small (full), Micro (reduced), Extreme (UPX).
 
-          ## RAM-only smoke tests (no installation to NAND)
-          Download ram-test.sh from this release, verify ram-test.sh.sha256, then run:
-          
-          sh ram-test.sh all
+          The one-command OpenWrt installer now uses a pinned and checksummed
+          POSIX shell lifecycle manager, following the Beszel-iOS bootstrap pattern.
+          Manager supports install, update, repair, status, doctor, diagnostics
+          and uninstall/restore of original binaries.
+          It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
+          or alters Tailscale authentication and state.
 
-          The test runs entirely in /tmp or /dev/shm tmpfs and produces a sanitized
-          results.tsv file. It does not change Tailscale services, routes, DNS,
-          Tailscale configuration, or persistent system executables.
+          Release assets: three profiles x ARM64/AMD64, SHA256 sidecars,
+          install.sh, manager.sh and ram-test.sh, with checksums.
+          The RAM tester remains the safe non-installation option on routers.
 
-          install.sh is also provided for optional persistent ARM64 installation;
-          do not use install.sh for RAM-only testing.
-
-          Micro/Extreme are not qualified for NR3053 VPN routing.
-          CLI/daemon-version smoke tests do not prove Exit Node or reconnect.
+          No real NR3053 Exit Node or subnet-routing qualification is claimed.
           NOTES
       - name: Publish prerelease
         shell: bash
