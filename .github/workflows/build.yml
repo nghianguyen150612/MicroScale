@@ -1,8 +1,8 @@
-name: Build MicroScale
+name: Build and benchmark MicroScale
 
 on:
   push:
-    branches: [main, feat/p001-bootstrap]
+    branches: [main, "feat/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -11,40 +11,68 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build and verify
-    runs-on: ubuntu-latest
+  profiles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    name: ${{ matrix.profile }} ARM64 + native benchmark
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [safe, small, extreme]
     steps:
       - name: Checkout MicroScale
         uses: actions/checkout@v4
 
-      - name: Check shell syntax
+      - name: Script and pin tests
+        run: bash tests/test_profiles.sh
+
+      - name: Install benchmark tools and packer
         shell: bash
-        run: bash -n scripts/build.sh scripts/verify.sh
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y binutils time
+          if [ "${{ matrix.profile }}" = extreme ]; then
+            sudo apt-get install -y upx-ucl
+          fi
 
-      - name: Build Linux ARM64 combined binary
-        run: ./scripts/build.sh safe
+      - name: Build Linux ARM64
+        run: TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"
 
-      - name: Verify Linux ARM64 artifact
-        run: ./scripts/verify.sh dist/safe/linux-arm64/microscale arm64 "$BASELINE_BYTES"
-        env:
-          BASELINE_BYTES: 41733325
+      - name: Verify Linux ARM64 (static only)
+        run: bash scripts/verify.sh "dist/${{ matrix.profile }}/linux-arm64/microscale" arm64
 
-      - name: Build native Linux binary for executable smoke tests
-        run: TARGET_GOARCH=amd64 ./scripts/build.sh safe
+      - name: Benchmark ARM64 executable size
+        run: bash scripts/benchmark.sh "${{ matrix.profile }}" arm64 "dist/${{ matrix.profile }}/linux-arm64/microscale"
 
-      - name: Run CLI and daemon smoke tests
-        run: ./scripts/verify.sh dist/safe/linux-amd64/microscale amd64 "$BASELINE_BYTES"
-        env:
-          BASELINE_BYTES: 41733325
+      - name: Build Linux AMD64 for native CLI and daemon smoke checks
+        run: TARGET_GOARCH=amd64 bash scripts/build.sh "${{ matrix.profile }}"
 
-      - name: Create SHA256 checksum
-        run: cd dist/safe/linux-arm64 && sha256sum microscale > SHA256SUMS
+      - name: Verify native CLI and daemon
+        run: bash scripts/verify.sh "dist/${{ matrix.profile }}/linux-amd64/microscale" amd64
 
-      - name: Upload Linux ARM64 artifact
+      - name: Benchmark native runtime (NOT NR3053)
+        run: bash scripts/benchmark.sh "${{ matrix.profile }}" amd64 "dist/${{ matrix.profile }}/linux-amd64/microscale"
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "### ${{ matrix.profile }} — CI runner, not router qualification" >> "$GITHUB_STEP_SUMMARY"
+          echo '#### ARM64' >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+          cat "dist/${{ matrix.profile }}/linux-arm64/benchmark.tsv" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+          echo '#### AMD64' >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+          cat "dist/${{ matrix.profile }}/linux-amd64/benchmark.tsv" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload binaries and benchmarks
         uses: actions/upload-artifact@v4
         with:
-          name: microscale-linux-arm64-safe
-          path: dist/safe/linux-arm64/
+          name: microscale-${{ matrix.profile }}-builds
+          path: |
+            dist/${{ matrix.profile }}/linux-arm64/
+            dist/${{ matrix.profile }}/linux-amd64/
           if-no-files-found: error
           retention-days: 30

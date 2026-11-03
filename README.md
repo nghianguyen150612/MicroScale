@@ -1,39 +1,61 @@
 # MicroScale
 
-**Tailscale, built smaller.**
+**Tailscale, built smaller.** An independent, reproducible build/packaging system for OpenWrt and embedded Linux; **not** a Tailscale fork or an official Tailscale product.
 
-MicroScale is a build and distribution system for the official [Tailscale](https://github.com/tailscale/tailscale) client on OpenWrt and embedded Linux. It is not a new VPN protocol and does not remove core VPN behavior to make the initial build smaller.
+## Three profiles
 
-## P001: Safe build
+| Profile | Tailscale upstream mode | ARM64 ELF | Compressed release archive | Readiness |
+| --- | --- | ---: | ---: | --- |
+| Safe | combined CLI+daemon, stripped, full-feature | 40.00 MiB | 13.61 MiB | CLI smoke test only |
+| Small | combined, `--extra-small` reduced features | 12.75 MiB | 4.93 MiB | Not NR3053-qualified |
+| Extreme | Small plus UPX `--best --lzma` | 3.43 MiB | 3.43 MiB | Experimental, not NR3053-qualified |
 
-The `safe` profile pins Tailscale `v1.104.5` to commit `73a48057aaf5f60e4f770b398e9b7af576b01dbe`, disables CGO, strips distribution debug sections, and uses upstream's `ts_include_cli` build tag to combine the `tailscale` CLI with the `tailscaled` daemon. No Tailscale feature omission tags are enabled. The upstream source is fetched during builds and is not stored in this repository.
+Measurements: GitHub Actions [PR #3](https://github.com/nghianguyen150612/MicroScale/pull/3), Tailscale `v1.104.5` pinned at commit `73a48057aaf5f60e4f770b398e9b7af576b01dbe`. File size and .tar.gz size **are not equal to real NAND savings** on compressed UBIFS.
 
-The produced `microscale` executable runs the daemon by default. Set `TS_BE_CLI=1` when invoking its CLI commands. The same file contains both programs; configure the target system's service to run it as the daemon, and use `TS_BE_CLI=1 microscale status` for CLI requests. See upstream `cmd/tailscaled/with_cli.go` for combined binary dispatch behavior.
+The reduced profiles intentionally omit userspace networking; the no-login userspace daemon benchmark cannot run, showing `NA` for daemon RSS. A real OpenWrt kernel-TUN test is mandatory before approving either profile. CI CLI smoke tests do not establish Exit Node, Subnet Router, login, MagicDNS or Tailscale SSH compatibility.
 
-```sh
-./scripts/build.sh safe
-./scripts/verify.sh dist/safe/linux-arm64/microscale arm64 41733325
+## Build on Linux
+
+Use a Go toolchain compatible with upstream, Git, Bash, GNU binutils and UPX for the Extreme profile. Upstream's pinned toolchain is invoked via `TS_USE_TOOLCHAIN=1`.
+
+```bash
+git clone https://github.com/nghianguyen150612/MicroScale.git
+cd MicroScale
+bash tests/test_profiles.sh
+
+TARGET_GOARCH=arm64 bash scripts/build.sh safe
+TARGET_GOARCH=arm64 bash scripts/build.sh small
+TARGET_GOARCH=arm64 bash scripts/build.sh extreme
 ```
 
-Build output includes `Tailscale-LICENSE` and `build-info.txt`. Keep the upstream license notice with any redistributed binary. `LICENSE` covers MicroScale's own repository files; Tailscale code and the combined binary remain subject to Tailscale's BSD 3-Clause license and notices.
+Artifacts are written to `dist/<profile>/linux-arm64/`. Each includes a single combined executable named `microscale`, a license, build metadata, checksums and a separate tar.gz archive.
 
-GitHub Actions builds and architecture-checks Linux ARM64, then builds a native Linux AMD64 copy to run CLI and daemon version smoke tests. CI reports the ARM64 binary size against the supplied, rounded 39.8 MiB baseline; the comparison is informational because the supplied component sizes are rounded and a full-feature combined binary may be slightly larger. It is not a benchmark of RAM, CPU, or runtime VPN behavior.
+The combined upstream binary launches the CLI when invoked with basename `tailscale`, or with `TS_BE_CLI=1`. The daemon is invoked as `tailscaled` or `microscale`.
 
-## Hardware status
+## Benchmarks
 
-Linux ARM64 is the initial build target. The Viettel NR3053 CPU architecture has **not** been verified, and no binary should be deployed to it until its actual userspace/kernel architecture and ABI are checked. P001 does not modify a router. Exit Node, Subnet Router, reconnect, MagicDNS, and 24/7 operation have not been tested on the NR3053; this project does not claim those runtime behaviors are verified.
+```bash
+TARGET_GOARCH=amd64 bash scripts/build.sh safe
+bash scripts/verify.sh dist/safe/linux-amd64/microscale amd64
+bash scripts/benchmark.sh safe amd64 dist/safe/linux-amd64/microscale
+```
 
-## Repository layout
+See [benchmark methodology](benchmarks/README.md). CLI RSS/startup is measured on GitHub runners and is not a prediction of router RAM consumption.
 
-- `profiles/safe.env`: pinned upstream version and conservative build settings.
-- `scripts/build.sh`: fetch the pinned upstream source and build the combined binary.
-- `scripts/verify.sh`: verify executable format, architecture, stripped debug sections, size, and compatible-host smoke tests.
-- `.github/workflows/build.yml`: CI build, verification, SHA256, and artifact upload.
+## Safety
+
+- **Never** deploy Small/Extreme directly on a router without independent LAN SSH and a verified rollback.
+- Do not update NAND partitions, bootloader, or firmware layout as part of this project.
+- Tailscale auth keys and local state must not be checked into GitHub.
+- A successful build is not a VPN functionality qualification.
+- Do not mark a release stable until Exit Node/subnet/DNS/SSH/reconnect/reboot and rollback are validated on the real NR3053.
 
 ## Roadmap
 
-- P001: repository bootstrap, combined binary, CI.
-- P002: benchmark size, RAM, CPU, and startup.
-- P003: Safe, Small, and Experimental build profiles.
-- P004: OpenWrt installer, backup, and rollback.
-- P005: GitHub Releases and upstream version tracking.
+- P001: initial full-feature Safe baseline (merged via PR #2)
+- P002/P003: independent three-profile benchmark and validation pipeline (PR #3)
+- P004: host-controlled OpenWrt installer and restore workflow
+- P005: prerelease artifacts, SHA256 and pinned source provenance
+- P006 (later): automatic upstream version PRs and requalification
+
+Tailscale upstream code is BSD-3-Clause licensed. Build artifacts preserve `Tailscale-LICENSE`; MicroScale is independent.
