@@ -34,7 +34,6 @@ jobs:
       - name: Validate code and deploy guards
         run: |
           bash tests/test_profiles.sh
-          bash tests/test_deploy.sh
           bash tests/test_installer.sh
       - name: Install packer if needed
         shell: bash

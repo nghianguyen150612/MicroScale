@@ -8,6 +8,7 @@ expected_version="$UPSTREAM_VERSION"
 expected_commit="$UPSTREAM_COMMIT"
 [[ "$expected_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
 [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || exit 1
+[[ ! -e profiles/safe.env ]] || { echo "legacy profile found" >&2; exit 1; }
 for profile in small micro extreme; do
   [[ -f "profiles/$profile.env" ]] || exit 1
   source "profiles/$profile.env"
