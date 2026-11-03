@@ -257,7 +257,8 @@ install_ram() {
     download_binary "$selected" "$arch"
     # Download/extraction already occupy tmpfs. Reserve additional space for
     # the durable RAM copy and 32 MiB of available memory for the running router.
-    candidate_kib=$(( ($(wc -c < "$STAGE/microscale" | tr -d ' ') + 1023) / 1024 ))
+    candidate_bytes="$(wc -c < "$STAGE/microscale" | tr -d ' ')"
+    candidate_kib=$(( (candidate_bytes + 1023) / 1024 ))
     tmp_free_kib="$(df -k /tmp | awk 'NR==2 {print $4}')"
     mem_available_kib="$(awk '/^MemAvailable:/ {print $2; exit}' /proc/meminfo)"
     case "$tmp_free_kib:$mem_available_kib" in
