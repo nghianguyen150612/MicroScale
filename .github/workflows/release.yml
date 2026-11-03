@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.5"
+        description: "Prerelease tag such as v0.2.0-rc.6"
         required: true
-        default: "v0.2.0-rc.5"
+        default: "v0.2.0-rc.6"
 
 permissions:
   contents: read
@@ -97,7 +97,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.5' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.6' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +156,7 @@ jobs:
           Profiles: Small (full), Micro (reduced), Extreme (UPX).
 
           The one-command OpenWrt installer now uses a pinned and checksummed
-          POSIX shell lifecycle manager, following the Beszel-iOS bootstrap pattern.
+          POSIX shell lifecycle manager, with an OpenWrt-native manager and short microscale CLI symlink.
           Manager supports install, update, repair, status, doctor, diagnostics
           and uninstall/restore of original binaries.
           It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
