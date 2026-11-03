@@ -155,10 +155,14 @@ jobs:
           ARM64 and x86_64 builds from pinned Tailscale v1.104.5.
           Profiles: Small (full), Micro (reduced), Extreme (UPX).
 
-          The one-command OpenWrt installer now uses a pinned and checksummed
-          POSIX shell lifecycle manager, with an OpenWrt-native manager and short microscale CLI symlink.
-          Manager supports install, update, repair, status, doctor, diagnostics
-          and uninstall/restore of original binaries.
+          The checksum-pinned OpenWrt installer now provides:
+          - /usr/lib/microscale/manager.sh (executable lifecycle manager)
+          - /usr/bin/microscale (short command symlink)
+          - /etc/microscale (persistent install state and original binary backups)
+
+          Manager supports install, update, repair, status, doctor, diagnostics,
+          version, and uninstall/restore of original binaries. Prior RC5 installs
+          using /var/lib/microscale require manual migration after saving backups.
           It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
           or alters Tailscale authentication and state.
 
