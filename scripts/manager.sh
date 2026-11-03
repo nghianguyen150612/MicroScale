@@ -76,6 +76,8 @@ cleanup() {
             rm -f "$CLI"
         fi
     fi
+    # Remove only staging names reserved by this invocation.
+    rm -f "$DAEMON.next.$" "$CLI.next.$" "$DAEMON.restore.$" "$CLI.restore.$"
     [ -z "$STAGE" ] || rm -rf "$STAGE"
     exit "$code"
 }
@@ -96,6 +98,11 @@ save_original() {
     # Abort rather than installing without a rollback record.
     [ -f "$STATE/install-state" ] && return 0
     mkdir -p "$ORIGINAL"
+    # Never overwrite a previous partial backup while state is missing.
+    if exists "$ORIGINAL/tailscaled" || exists "$ORIGINAL/tailscale" ||
+       [ -f "$ORIGINAL/no-daemon" ] || [ -f "$ORIGINAL/no-cli" ]; then
+        die 'Original backup exists without install-state; inspect /var/lib/microscale before retrying'
+    fi
     if exists "$DAEMON"; then cp -a "$DAEMON" "$ORIGINAL/tailscaled" || die 'Cannot preserve original daemon'; else : > "$ORIGINAL/no-daemon"; fi
     if exists "$CLI"; then cp -a "$CLI" "$ORIGINAL/tailscale" || die 'Cannot preserve original CLI'; else : > "$ORIGINAL/no-cli"; fi
 }
