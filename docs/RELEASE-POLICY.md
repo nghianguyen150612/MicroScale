@@ -1,10 +1,28 @@
 # Release policy
 
-- **P001**: full-feature Safe baseline. CI proves build and CLI/daemon smoke tests only.
-- **P002/P003**: three profiles; report raw ELF bytes, archive bytes and host-only benchmarks, plus honest missing metrics. Small/Extreme are unqualified until device tests.
-- **P004**: local-LAN-only deploy/restore tooling. No deployment from CI.
-- **P005**: release-candidate packages via GitHub Actions only after CI. Workflow only accepts tags `vX.Y.Z-rc.N`; it never creates a stable release.
+MicroScale generates reproducible ARM64 packages from pinned upstream Tailscale.
 
-A stable release requires evidence from NR3053: correct CPU ABI, successful fresh login/CLI management, Exit Node and subnet dataplane validation from another tailnet client, MagicDNS, Tailscale SSH, reconnect under WAN interruption, persistence after reboot, and tested rollback. This release candidate is not proof of any such result.
+- `Safe`: combined CLI + daemon, stripped, unmodified feature set.
+- `Small`: upstream `--extra-small`, feature-reduced.
+- `Extreme`: Small + UPX packing.
+- `scripts/install.sh`: interactive, Tailscale-binaries-only installation, without service start or network configuration.
 
-Workflow: once `release.yml` lands on main, the initial push creates `v0.2.0-rc.1` if release build passes. For later candidates use GitHub Actions > MicroScale release candidate > Run workflow with a new -rc.N tag. Each archive contains its checksum, license and build provenance. Never publish private Tailscale state/keys.
+## Prerelease v0.2.0-rc.2
+
+The prerelease contains `install.sh`, `install.sh.sha256`, and the three ARM64 tar.gz assets and their SHA256 files. Each tarball includes Tailscale upstream license, build metadata and executable hash. The installer itself is tied to the same release tag.
+
+CI verifies source pin, binary architecture/checksums and CLI/daemon smoke tests; it does NOT verify VPN dataplane behavior on NR3053. A prerelease is explicitly not a production support claim.
+
+## Stable gate
+
+A stable release is gated on real NR3053 evidence:
+
+1. CPU/userspace architecture and init/service compatibility.
+2. Successful login/CLI and local Tailscale daemon startup for each supported profile.
+3. Exit Node and Subnet Router dataplane validation from another client.
+4. DNS, Tailscale SSH, restart/reconnect, and reboot persistence if claimed.
+5. Checked backup and rollback path, with local LAN administration.
+
+Without this evidence, publish only release candidates and keep configuration and service operation in the user's control.
+
+No Tailscale auth keys or router secrets belong in the public repo.
