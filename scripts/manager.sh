@@ -218,6 +218,7 @@ ram_stage_ready() {
     case "$stage_arch" in arm64|amd64) ;; *) return 1 ;; esac
     [ "$stage_release" = "$TAG" ] || return 1
     [ "$stage_arch" = "$(runtime_arch)" ] || return 1
+    [ -n "$stage_hash" ] || return 1
     [ "$(sha256sum "$RAM_ROOT/microscale" | awk '{print $1}')" = "$stage_hash" ] || return 1
     [ "$(sha256sum "$RAM_ROOT/manager.sh" | awk '{print $1}')" = "$(sha256sum "$0" | awk '{print $1}')" ] || return 1
     [ -L "$RAM_ROOT/bin/tailscale" ] &&
@@ -433,8 +434,6 @@ if [ -z "$operation" ]; then
     info '1) Install to RAM (no NAND writes)'
     if ram_stage_ready; then
         info "2) Apply verified RAM stage to NAND ($stage_profile)"
-    else
-        info '2) Apply RAM to NAND (unavailable until RAM stage exists)'
     fi
     info '3) Install/Update directly to NAND'
     info '4) RAM status   5) Status   6) Doctor   7) Diagnostics'
