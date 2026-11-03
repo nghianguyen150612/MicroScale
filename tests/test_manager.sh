@@ -37,6 +37,12 @@ done
 grep -Fq 'ensure_command_available' scripts/manager.sh
 grep -Fq 'readlink "$COMMAND"' scripts/manager.sh
 
+# Guard against mismatched staging paths ($ instead of $$) on BusyBox ash.
+if grep -En '\.(next|restore)\.\$["[:space:]]' scripts/manager.sh; then
+    echo 'FAIL: malformed PID-suffixed transaction path' >&2
+    exit 1
+fi
+
 # Preserve the original no-service, no-auth and no-routing contract.
 for path in scripts/install.sh scripts/manager.sh; do
     if grep -Eq '^[[:space:]]*(uci|iptables|nft|systemctl|service|tailscale up|tailscale set|tailscale login)([[:space:]]|$)' "$path"; then
