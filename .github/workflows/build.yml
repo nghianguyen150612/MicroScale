@@ -2,7 +2,7 @@ name: Build and benchmark MicroScale
 
 on:
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -28,6 +28,8 @@ jobs:
 
       - name: Verify local-LAN deployment guard
         run: bash tests/test_deploy.sh
+      - name: Verify interactive binary-only installer
+        run: bash tests/test_installer.sh
 
       - name: Install benchmark tools and packer
         shell: bash

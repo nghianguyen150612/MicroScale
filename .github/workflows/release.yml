@@ -10,7 +10,7 @@ on:
       candidate_tag:
         description: "Prerelease tag such as v0.2.0-rc.2"
         required: true
-        default: "v0.2.0-rc.1"
+        default: "v0.2.0-rc.2"
 
 permissions:
   contents: read
@@ -35,6 +35,7 @@ jobs:
         run: |
           bash tests/test_profiles.sh
           bash tests/test_deploy.sh
+          bash tests/test_installer.sh
       - name: Install packer if needed
         shell: bash
         run: |
@@ -43,8 +44,21 @@ jobs:
           if [ "${{ matrix.profile }}" = extreme ]; then
             sudo apt-get install -y upx-ucl
           fi
-      - name: Build pinned upstream for ARM64
-        run: TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"
+      - name: Build pinned upstream for ARM64 (retry transient download failures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Build failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "Build attempt $attempt failed; retrying transient upstream download failures..."
+            sleep 15
+          done
       - name: Verify ELF and checksums
         shell: bash
         run: |
@@ -79,14 +93,24 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.1' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.2' }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: rc-*
           path: release-assets
           merge-multiple: true
+      - name: Stage interactive binary-only installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh -n scripts/install.sh
+          cp scripts/install.sh release-assets/install.sh
+          sed -i "s|^RELEASE_TAG=.*|RELEASE_TAG=$TAG|" release-assets/install.sh
+          chmod 644 release-assets/install.sh
+          (cd release-assets && sha256sum install.sh > install.sh.sha256)
       - name: Validate candidate and download checksums
         shell: bash
         run: |
@@ -96,22 +120,35 @@ jobs:
             exit 1
           }
           cd release-assets
+          sha256sum -c install.sh.sha256
+          grep -Fx "RELEASE_TAG=$TAG" install.sh
           for profile in safe small extreme; do
             sha256sum -c "microscale-$profile-linux-arm64.tar.gz.sha256"
           done
       - name: Write release notice
         shell: bash
         run: |
-          cat > notes.md <<'NOTES'
-          MicroScale release candidate (non-production).
-          Built from pinned Tailscale upstream v1.104.5 with distinct Safe, Small and Extreme ARM64 profiles.
-          All archives carry upstream Tailscale license and SHA256 checksums.
+          cat > notes.md <<NOTES
+          # MicroScale $TAG (prerelease)
 
-          WARNING: CI binary/CLI smoke tests are not hardware qualification.
-          Small and Extreme are feature-reduced/UPX experimental. They have NOT passed
-          NR3053 Exit Node, subnet routing, MagicDNS, login, SSH, or reboot endurance tests.
-          No automatic deployment is included. Use only with direct LAN SSH, backups
-          and tested rollback. Never treat an RC as a stable router upgrade.
+          Official upstream Tailscale v1.104.5 source, packaged in three ARM64 profiles:
+          Safe (full), Small (reduced) and Extreme (reduced + UPX).
+          Builds preserve the Tailscale license and SHA256 checksums.
+
+          ## Interactive binary-only installer (SSH into your OpenWrt router)
+          \`\`\`sh
+          wget -O /tmp/microscale-install.sh https://github.com/$GH_REPO/releases/download/$TAG/install.sh && sh /tmp/microscale-install.sh
+          \`\`\`
+
+          The menu lets you pick a profile; installer only replaces the Tailscale executable paths.
+          No Tailscale login, service start/restart, init configuration, DNS, firewall, routes,
+          Wi-Fi, or persistent auth state is changed. An existing daemon continues running
+          the old executable until the user restarts it manually.
+
+          **Unqualified for NR3053.** CI smoke tests do not prove Exit Node, DNS,
+          subnet routing, reconnect or Tailscale SSH. Small/Extreme omit features and
+          must be evaluated before use. Keep direct local SSH recovery and a binary backup.
+          This is a release candidate, not a stable production upgrade.
           NOTES
       - name: Publish prerelease
         shell: bash
