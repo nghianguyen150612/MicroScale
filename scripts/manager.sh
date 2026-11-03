@@ -40,6 +40,7 @@ require_platform() {
     [ -d /overlay ] || die 'OpenWrt overlay missing; refusing to modify this host'
     [ -d /usr/sbin ] && [ -d /usr/bin ] && [ -d /usr/lib ] || die 'Missing OpenWrt binary directories'
     is_tmpfs /tmp || die '/tmp must be tmpfs for staging'
+    command -v readlink >/dev/null 2>&1 || die 'BusyBox readlink required'
     # Older releases stored backups under /var/lib, which can be volatile on OpenWrt.
     # Never silently replace or abandon an existing RC5 rollback record.
     if [ -f "$LEGACY_STATE/install-state" ] && [ ! -f "$STATE/install-state" ]; then
@@ -230,9 +231,18 @@ status() {
     fi
     if exists "$DAEMON"; then info 'Daemon binary: present'; else info 'Daemon binary: absent'; fi
     if exists "$CLI"; then info 'CLI binary: present'; else info 'CLI binary: absent'; fi
+    if [ -L "$COMMAND" ] && [ "$(readlink "$COMMAND")" = "$MANAGER" ] && [ -f "$MANAGER" ]; then
+        info "Manager CLI: $COMMAND -> $MANAGER"
+    else
+        info 'Manager CLI: not installed'
+    fi
 }
 doctor() {
     status
+    if [ -r "$STATE/install-state" ]; then
+        [ -L "$COMMAND" ] && [ "$(readlink "$COMMAND")" = "$MANAGER" ] &&
+            [ -x "$MANAGER" ] || die 'microscale CLI symlink/manager invalid'
+    fi
     if exists "$DAEMON"; then
         if TS_BE_CLI=1 "$DAEMON" version >/dev/null 2>&1 &&
            "$DAEMON" --version >/dev/null 2>&1; then
@@ -282,8 +292,14 @@ uninstall() {
     info 'Original binary files restored. Tailscale state/config/service untouched.'
     info 'Manager and original backups retained for inspection.'
 }
+version() {
+    info "MicroScale manager $TAG"
+    if [ -r "$STATE/install-state" ]; then
+        info "Installed: $(tr '\n' ' ' < "$STATE/install-state")"
+    fi
+}
 usage() {
-    printf 'Usage: sh manager.sh [install|update|repair|status|doctor|diagnostics|uninstall] [small|micro|extreme]\n'
+    printf 'Usage: microscale [install|update|repair|status|doctor|diagnostics|uninstall|version|help] [small|micro|extreme]\n'
 }
 operation=""
 if [ "$#" -gt 0 ]; then operation="$1"; shift; fi
@@ -304,6 +320,7 @@ case "$operation" in
         install_binary "$requested"
         ;;
     status) status ;;
+    version) version ;;
     doctor) doctor ;;
     diagnostics) diagnostics ;;
     uninstall) uninstall ;;
