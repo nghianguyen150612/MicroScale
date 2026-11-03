@@ -1,21 +1,51 @@
-# OpenWrt ARM64 lifecycle installer
+# OpenWrt ARM64 installer
 
-The installer uses a small `install.sh` bootstrap that downloads `manager.sh` from the pinned MicroScale release, checks its SHA256 digest against a checksum embedded in the bootstrap, and executes the verified local file. The manager is POSIX `/bin/sh` and reads menu input from `/dev/tty`.
+The MicroScale installer uses a checksum-pinned bootstrap, a separate POSIX shell lifecycle manager, and a short CLI command.
 
-```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.5/install.sh
-sh /tmp/microscale-install.sh
-```
+## Quick Start
 
-Choose a lifecycle operation and optionally a profile: Small (full), Micro (reduced), Extreme (UPX-packed reduced). The manager supports `install`, `update`, `repair`, `status`, `doctor`, `diagnostics`, and `uninstall` (restore original binaries). To check an existing installation:
+Run as root over local LAN SSH:
 
 ```sh
-sh /var/lib/microscale/manager.sh status
-sh /var/lib/microscale/manager.sh doctor
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.6/install.sh && sh /tmp/microscale-install.sh
 ```
 
-The manager only installs `/usr/sbin/tailscaled` and a `/usr/bin/tailscale` symlink, plus its own metadata and original binary backup in `/var/lib/microscale`. It verifies release archive SHA256, executable SHA256, architecture, and free overlay space. It attempts an in-session rollback if a file update fails. Insufficient NAND capacity causes a refusal, not an unsafe install.
+The bootstrap downloads the release's `manager.sh`, checks the SHA256 digest pinned in `install.sh`, then runs the verified local copy. Choose the profile and confirm installation.
 
-**No service changes:** no `tailscale up`, daemon restart, systemd/init management, UCI, DNS, firewall, exit-node config, or authentication-state edits. An already-running Tailscale daemon continues using its old executable until you choose to restart it yourself. Uninstall restores binaries and preserves all Tailscale configuration/data.
+## Installed paths
 
-Micro and Extreme are experimental on NR3053. Always retain direct LAN SSH access before persistent installation. For non-invasive experimentation, use [RAM-only testing](RAM-TEST.md) instead.
+| Path | Purpose |
+| --- | --- |
+| `/usr/lib/microscale/manager.sh` | Persistent lifecycle manager |
+| `/usr/bin/microscale` | Symlink to the manager |
+| `/etc/microscale/install-state` | Installed version/profile |
+| `/etc/microscale/original/` | Persistent backup of original binary files |
+| `/usr/sbin/tailscaled` | Tailscale combined executable |
+| `/usr/bin/tailscale` | Symlink to the combined executable |
+
+`/etc` is persistent under a writable OpenWrt overlay, while `/var` may point to RAM. MicroScale does **not** use `/var/lib` for new installs.
+
+## Commands
+
+```sh
+microscale                # Interactive menu
+microscale version
+microscale help
+microscale status
+microscale doctor
+microscale diagnostics
+microscale install micro
+microscale update micro
+microscale repair
+microscale uninstall      # Restore original binaries
+```
+
+The manager only changes Tailscale executable paths and MicroScale's own program/metadata. It never runs `tailscale up`, changes network configuration, touches Tailnet secrets, starts/restarts a service, or enables boot startup. Existing daemon processes retain their old binary until users restart them separately.
+
+A backup is kept persistently in `/etc/microscale/original`; because the device may have limited NAND, the installer refuses writes when it cannot reserve sufficient space. `uninstall` restores original binaries and retains manager/backup records for safe reinstallation.
+
+## Migrating from RC5
+
+RC5 stored the manager and backups at `/var/lib/microscale`. On OpenWrt this may be volatile, so **do not reboot or delete that directory before inspecting it** if you previously used RC5 for a persistent installation. RC6 refuses to install over a detected RC5 install-state without migration. Make a backup of original files and confirm the existing state first. The change of paths is not an automatic data migration.
+
+For non-destructive testing, use [RAM-only smoke tests](RAM-TEST.md). Real NR3053 Exit Node/subnet routing and RC6 installer transactions have not yet been device-validated.
