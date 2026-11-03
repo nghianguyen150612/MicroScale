@@ -1,0 +1,127 @@
+name: MicroScale release candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release.yml
+  workflow_dispatch:
+    inputs:
+      candidate_tag:
+        description: "Prerelease tag such as v0.2.0-rc.2"
+        required: true
+        default: "v0.2.0-rc.1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: microscale-rc-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Package ${{ matrix.profile }} ARM64
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [safe, small, extreme]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate code and deploy guards
+        run: |
+          bash tests/test_profiles.sh
+          bash tests/test_deploy.sh
+      - name: Install packer if needed
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils
+          if [ "${{ matrix.profile }}" = extreme ]; then
+            sudo apt-get install -y upx-ucl
+          fi
+      - name: Build pinned upstream for ARM64
+        run: TARGET_GOARCH=arm64 bash scripts/build.sh "${{ matrix.profile }}"
+      - name: Verify ELF and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          profile="${{ matrix.profile }}"
+          dir="dist/$profile/linux-arm64"
+          bash scripts/verify.sh "$dir/microscale" arm64
+          (cd "$dir"; sha256sum -c SHA256SUMS; sha256sum -c ARCHIVE.SHA256)
+          grep -q "Feature qualification: NOT COMPLETE" "$dir/build-info.txt"
+      - name: Prepare distinct release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          profile="${{ matrix.profile }}"
+          dir="dist/$profile/linux-arm64"
+          mkdir -p release-assets
+          cp "$dir/microscale-$profile-linux-arm64.tar.gz" release-assets/
+          cp "$dir/ARCHIVE.SHA256" "release-assets/microscale-$profile-linux-arm64.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rc-${{ matrix.profile }}
+          path: release-assets/
+          retention-days: 30
+          if-no-files-found: error
+
+  prerelease:
+    name: Publish prerelease only
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.1' }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rc-*
+          path: release-assets
+          merge-multiple: true
+      - name: Validate candidate and download checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || {
+            echo "This workflow only permits -rc.N prerelease tags" >&2
+            exit 1
+          }
+          cd release-assets
+          for profile in safe small extreme; do
+            sha256sum -c "microscale-$profile-linux-arm64.tar.gz.sha256"
+          done
+      - name: Write release notice
+        shell: bash
+        run: |
+          cat > notes.md <<'NOTES'
+          MicroScale release candidate (non-production).
+          Built from pinned Tailscale upstream v1.104.5 with distinct Safe, Small and Extreme ARM64 profiles.
+          All archives carry upstream Tailscale license and SHA256 checksums.
+
+          WARNING: CI binary/CLI smoke tests are not hardware qualification.
+          Small and Extreme are feature-reduced/UPX experimental. They have NOT passed
+          NR3053 Exit Node, subnet routing, MagicDNS, login, SSH, or reboot endurance tests.
+          No automatic deployment is included. Use only with direct LAN SSH, backups
+          and tested rollback. Never treat an RC as a stable router upgrade.
+          NOTES
+      - name: Publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null 2>&1 && {
+            echo "Refusing to overwrite existing release $TAG" >&2
+            exit 1
+          }
+          gh release create "$TAG" release-assets/* \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "MicroScale $TAG (not router-qualified)" \
+            --notes-file notes.md
