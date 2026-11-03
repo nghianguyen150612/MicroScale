@@ -21,6 +21,7 @@ Embedded devices often have limited flash and RAM. MicroScale packages a combine
 - **One-command installer** — profile selection and a persistent `microscale` management command.
 - **Safe bootstrap** — download, verify a pinned SHA256 digest, then execute `manager.sh`.
 - **Lifecycle commands** — install, update, repair, status, diagnostics, doctor, version, uninstall.
+- **Install to RAM first** — stage a checksummed executable under `/tmp/microscale-stage` without changing system binaries; rerun installer to apply the same verified profile to NAND.
 - **RAM-only testing** — measure CLI size and one-shot RSS without installing or restarting Tailscale.
 - **Binary-only scope** — never automatically configure a Tailnet, DNS, firewall, routes or services.
 
@@ -29,10 +30,19 @@ Embedded devices often have limited flash and RAM. MicroScale packages a combine
 > Requires root, a supported **ARM64 OpenWrt** system, working HTTPS download tools, writable overlay space and direct LAN SSH. Review the [compatibility notes](#compatibility) first.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.6/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/install.sh && sh /tmp/microscale-install.sh
 ```
 
-Choose **Install/Update** and your preferred profile. After installation, the `microscale` command is available in your shell.
+Choose **Install to RAM** and a Small/Micro/Extreme profile. Test the staged binary:
+
+```sh
+/tmp/microscale-stage/bin/tailscale version
+/tmp/microscale-stage/bin/tailscaled --version
+```
+
+Run the same installer command again. When the stage checksum is valid, the menu gains **Apply RAM to NAND**. Only this action (or direct NAND install) changes system binaries. Nothing starts or restarts the Tailscale service.
+
+After applying to NAND, the persistent `microscale` command is available in your shell.
 
 ```sh
 microscale
@@ -63,6 +73,10 @@ manager.sh (POSIX shell)
 ## CLI administration
 
 ```sh
+microscale install-ram micro
+microscale ram-status
+microscale apply   # Commit verified staged RAM binary to NAND
+microscale clear-ram
 microscale install micro
 microscale update micro
 microscale repair
@@ -73,7 +87,7 @@ microscale version
 microscale uninstall
 ```
 
-Operations that write files require root and interactive confirmation. Uninstall restores original Tailscale binaries; it does not erase Tailscale configuration. See [installer details](docs/ONE-CLICK-INSTALL.md).
+RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND operations require root and interactive confirmation. Uninstall restores original Tailscale binaries; it does not erase Tailscale configuration. See [installer details](docs/ONE-CLICK-INSTALL.md).
 
 ## Build profiles
 
@@ -98,7 +112,7 @@ Operations that write files require root and interactive confirmation. Uninstall
 
 ## Test without installing
 
-Download and checksum-verify [`ram-test.sh`](docs/RAM-TEST.md) from the release, then run it in RAM. No system executables or services are changed.
+Use the installer **Install to RAM** option for a staged executable that can later be applied to NAND, or download [`ram-test.sh`](docs/RAM-TEST.md) for automatic smoke measurements. Neither changes system executables or services.
 
 ## Build from source
 
