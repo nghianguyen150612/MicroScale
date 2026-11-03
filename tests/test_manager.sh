@@ -11,12 +11,14 @@ actual="$(sha256sum scripts/manager.sh | awk '{print $1}')"
     echo "FAIL: bootstrap manager checksum pin is outdated" >&2
     exit 1
 }
-[[ "$(sed -n 's/^RELEASE_TAG=//p' scripts/install.sh)" == v0.2.0-rc.6 ]]
-[[ "$(sed -n 's/^TAG=//p' scripts/manager.sh)" == v0.2.0-rc.6 ]]
+[[ "$(sed -n 's/^RELEASE_TAG=//p' scripts/install.sh)" == v0.2.0-rc.7 ]]
+[[ "$(sed -n 's/^TAG=//p' scripts/manager.sh)" == v0.2.0-rc.7 ]]
 
 sh scripts/manager.sh help | grep -q 'microscale'
 sh scripts/manager.sh version | grep -q 'MicroScale manager'
 sh scripts/manager.sh status | grep -q 'Managed install'
+sh scripts/manager.sh ram-status | grep -q 'RAM stage'
+sh scripts/manager.sh help | grep -q 'install-ram'
 
 # The OpenWrt layout and symlink must be explicitly implemented, not merely documented.
 for literal in \
