@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [safe, small, extreme]
+        profile: [small, micro, extreme]
     steps:
       - name: Checkout MicroScale
         uses: actions/checkout@v4

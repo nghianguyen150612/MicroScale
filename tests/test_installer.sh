@@ -6,11 +6,13 @@ sh -n scripts/install.sh
 help="$(sh scripts/install.sh --help)"
 grep -q 'three-choice interactive menu' <<<"$help"
 grep -q 'never configures, starts, restarts or enables' <<<"$help"
-grep -q 'Safe' scripts/install.sh
 grep -q 'Small' scripts/install.sh
+grep -q 'Micro' scripts/install.sh
+grep -q 'Small' scripts/install.sh
+grep -q 'Micro' scripts/install.sh
 grep -q 'Extreme' scripts/install.sh
 grep -q 'sha256sum -c' scripts/install.sh
-grep -q '^RELEASE_TAG="v0.2.0-rc.2"$' scripts/install.sh
+grep -q '^RELEASE_TAG="v0.2.0-rc.3"$' scripts/install.sh
 
 # Installer must contain no service, networking, or authentication commands.
 # It is deliberately an installation-only operation; the user manages startup.
@@ -21,7 +23,7 @@ fi
 
 # Release workflow must include an installer and the three profiles.
 grep -q 'scripts/install.sh' .github/workflows/release.yml
-for profile in safe small extreme; do
+for profile in small micro extreme; do
     grep -q "$profile" .github/workflows/release.yml
 done
 

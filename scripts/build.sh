@@ -5,8 +5,8 @@ fail() { printf 'build.sh: ERROR: %s\n' "$*" >&2; exit 1; }
 trap 'status=$?; printf "build.sh: failed at line %s (exit %s): %s\n" "$LINENO" "$status" "$BASH_COMMAND" >&2; exit "$status"' ERR
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-profile="${1:-safe}"
-case "$profile" in safe|small|extreme) ;; *) fail "profile must be safe, small or extreme";; esac
+profile="${1:-small}"
+case "$profile" in small|micro|extreme) ;; *) fail "profile must be small, micro or extreme";; esac
 profile_file="$repo_root/profiles/$profile.env"
 [[ -f "$profile_file" ]] || fail "missing $profile_file"
 # Profiles are trusted repo-controlled shell configuration.
@@ -39,11 +39,10 @@ actual_commit="$(git -C "$upstream_dir" rev-parse HEAD)"
 output_dir="$repo_root/dist/$profile/$target_goos-$target_goarch"
 mkdir -p "$output_dir"
 binary="$output_dir/microscale"
-if [[ "$profile" == safe ]]; then
+if [[ "$profile" == small ]]; then
   build_args=(--box --strip)
 else
-  # Upstream uses --extra-small to keep osrouter/nattraversal but may omit
-  # features like IPN bus; this is never assumed to be device-qualified.
+  # Reduced features require target-device validation.
   build_args=(--box --extra-small)
 fi
 (
