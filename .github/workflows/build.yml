@@ -26,6 +26,9 @@ jobs:
       - name: Script and pin tests
         run: bash tests/test_profiles.sh
 
+      - name: Verify local-LAN deployment guard
+        run: bash tests/test_deploy.sh
+
       - name: Install benchmark tools and packer
         shell: bash
         run: |
