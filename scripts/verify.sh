@@ -47,9 +47,11 @@ if [[ "$host_goarch" != "$expected_arch" ]]; then
   exit 0
 fi
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/profiles/safe.env"
+expected_version="${UPSTREAM_VERSION#v}"
 cli_version="$(TS_BE_CLI=1 "$binary" version 2>&1)" || fail "combined CLI version command failed"
-[[ "$cli_version" == *"1.104.5"* ]] || fail "unexpected CLI version output: $cli_version"
+[[ "$cli_version" == *"$expected_version"* ]] || fail "unexpected CLI version output: $cli_version"
 TS_BE_CLI=1 "$binary" --help >/dev/null 2>&1 || fail "combined CLI --help smoke test failed"
 daemon_version="$(env -u TS_BE_CLI "$binary" --version 2>&1)" || fail "combined daemon --version command failed"
-[[ "$daemon_version" == *"1.104.5"* ]] || fail "unexpected daemon version output: $daemon_version"
+[[ "$daemon_version" == *"$expected_version"* ]] || fail "unexpected daemon version output: $daemon_version"
 printf 'Runtime smoke tests: PASS (CLI version, CLI help, daemon version)\n'
