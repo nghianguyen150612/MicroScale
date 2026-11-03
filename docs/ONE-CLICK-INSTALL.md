@@ -3,7 +3,7 @@
 Supports OpenWrt ARM64 with writable `/overlay`. Run as root using a direct LAN connection.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.3/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.4/install.sh && sh /tmp/microscale-install.sh
 ```
 
 The menu offers **Small** (full features), **Micro** (reduced features), and **Extreme** (reduced + UPX). The script verifies SHA256 checksums and binary execution, then updates only:
