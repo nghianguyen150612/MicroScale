@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.6"
+        description: "Prerelease tag such as v0.2.0-rc.7"
         required: true
-        default: "v0.2.0-rc.6"
+        default: "v0.2.0-rc.7"
 
 permissions:
   contents: read
@@ -38,6 +38,7 @@ jobs:
           bash tests/test_installer.sh
           bash tests/test_ram.sh
           bash tests/test_manager.sh
+          bash tests/test_ram_stage.sh
       - name: Install packer if needed
         shell: bash
         run: |
@@ -97,7 +98,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.6' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.7' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +162,9 @@ jobs:
           - /etc/microscale (persistent install state and original binary backups)
 
           Manager supports install, update, repair, status, doctor, diagnostics,
-          version, and uninstall/restore of original binaries. Prior RC5 installs
+          version, RAM staging, verified RAM-to-NAND apply, and uninstall/restore.
+          The RAM stage uses /tmp/microscale-stage and does not install binaries
+          into /usr or change the running Tailscale service. Prior RC5 installs
           using /var/lib/microscale require manual migration after saving backups.
           It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
           or alters Tailscale authentication and state.
