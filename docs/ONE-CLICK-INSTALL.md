@@ -1,18 +1,21 @@
-# Installation
+# OpenWrt ARM64 lifecycle installer
 
-Supports OpenWrt ARM64 with writable `/overlay`. Run as root using a direct LAN connection.
+The installer uses a small `install.sh` bootstrap that downloads `manager.sh` from the pinned MicroScale release, checks its SHA256 digest against a checksum embedded in the bootstrap, and executes the verified local file. The manager is POSIX `/bin/sh` and reads menu input from `/dev/tty`.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.4/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.5/install.sh
+sh /tmp/microscale-install.sh
 ```
 
-The menu offers **Small** (full features), **Micro** (reduced features), and **Extreme** (reduced + UPX). The script verifies SHA256 checksums and binary execution, then updates only:
+Choose a lifecycle operation and optionally a profile: Small (full), Micro (reduced), Extreme (UPX-packed reduced). The manager supports `install`, `update`, `repair`, `status`, `doctor`, `diagnostics`, and `uninstall` (restore original binaries). To check an existing installation:
 
-- `/usr/sbin/tailscaled`
-- `/usr/bin/tailscale` (symlink)
+```sh
+sh /var/lib/microscale/manager.sh status
+sh /var/lib/microscale/manager.sh doctor
+```
 
-It does **not** start or restart the daemon, run `tailscale up`, or edit DNS, routes, firewall, authentication, or init scripts. A currently running daemon continues using its previous binary until you restart it.
+The manager only installs `/usr/sbin/tailscaled` and a `/usr/bin/tailscale` symlink, plus its own metadata and original binary backup in `/var/lib/microscale`. It verifies release archive SHA256, executable SHA256, architecture, and free overlay space. It attempts an in-session rollback if a file update fails. Insufficient NAND capacity causes a refusal, not an unsafe install.
 
-Existing binaries are backed up to `/tmp/microscale-backup.*`; these backups disappear on reboot. Keep another copy if you need persistent rollback, and install through local SSH rather than your only Tailscale connection.
+**No service changes:** no `tailscale up`, daemon restart, systemd/init management, UCI, DNS, firewall, exit-node config, or authentication-state edits. An already-running Tailscale daemon continues using its old executable until you choose to restart it yourself. Uninstall restores binaries and preserves all Tailscale configuration/data.
 
-**Micro and Extreme are experimental.** Successful CLI tests do not confirm login, Exit Node, subnet routing, or reconnect. The ARM64 build has not been fully qualified on NR3053.
+Micro and Extreme are experimental on NR3053. Always retain direct LAN SSH access before persistent installation. For non-invasive experimentation, use [RAM-only testing](RAM-TEST.md) instead.
