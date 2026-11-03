@@ -1,0 +1,7 @@
+utc	platform	arch	profile	release	elf_bytes	ram_total_kib	ram_available_kib	cli_version	daemon_version	cli_help	cli_peak_rss_kib	cli_elapsed_s	result
+2026-11-03T09:02:15Z	openwrt	arm64	small	v0.2.0-rc.4	41943200	492120	186520	ok	ok	ok	118928	0.03	PASS
+2026-11-03T09:02:18Z	openwrt	arm64	micro	v0.2.0-rc.4	13369504	492120	186520	ok	ok	ok	44752	0.01	PASS
+2026-11-03T09:02:24Z	openwrt	arm64	extreme	v0.2.0-rc.4	3592972	492120	186520	ok	ok	ok	66032	0.78	PASS
+2026-11-03T09:02:36Z	openwrt	arm64	small	v0.2.0-rc.4	41943200	492120	106452	ok	ok	ok	118256	0.03	PASS
+2026-11-03T09:02:38Z	openwrt	arm64	micro	v0.2.0-rc.4	13369504	492120	104804	ok	ok	ok	44496	0.01	PASS
+2026-11-03T09:02:43Z	openwrt	arm64	extreme	v0.2.0-rc.4	3592972	492120	104700	ok	ok	ok	66032	0.78	PASS
