@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.5"
+        description: "Prerelease tag such as v0.2.0-rc.6"
         required: true
-        default: "v0.2.0-rc.5"
+        default: "v0.2.0-rc.6"
 
 permissions:
   contents: read
@@ -97,7 +97,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.5' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.6' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -155,10 +155,14 @@ jobs:
           ARM64 and x86_64 builds from pinned Tailscale v1.104.5.
           Profiles: Small (full), Micro (reduced), Extreme (UPX).
 
-          The one-command OpenWrt installer now uses a pinned and checksummed
-          POSIX shell lifecycle manager, following the Beszel-iOS bootstrap pattern.
-          Manager supports install, update, repair, status, doctor, diagnostics
-          and uninstall/restore of original binaries.
+          The checksum-pinned OpenWrt installer now provides:
+          - /usr/lib/microscale/manager.sh (executable lifecycle manager)
+          - /usr/bin/microscale (short command symlink)
+          - /etc/microscale (persistent install state and original binary backups)
+
+          Manager supports install, update, repair, status, doctor, diagnostics,
+          version, and uninstall/restore of original binaries. Prior RC5 installs
+          using /var/lib/microscale require manual migration after saving backups.
           It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
           or alters Tailscale authentication and state.
 
