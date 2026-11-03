@@ -36,6 +36,7 @@ jobs:
         run: |
           bash tests/test_profiles.sh
           bash tests/test_installer.sh
+          bash tests/test_ram.sh
       - name: Install packer if needed
         shell: bash
         run: |
