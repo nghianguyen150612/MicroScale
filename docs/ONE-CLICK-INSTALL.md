@@ -1,55 +1,18 @@
-# MicroScale one-command installer
+# Installation
 
-Target: **OpenWrt with ARM64 userspace and a writable `/overlay`**. The supplied binary is Linux ARM64. This release is experimental until real-router functional qualification is complete.
-
-## Install
-
-Connect to the router using SSH over the local LAN (preferably with a recovery session available) and run as root:
+Supports OpenWrt ARM64 with writable `/overlay`. Run as root using a direct LAN connection.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.2/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.3/install.sh && sh /tmp/microscale-install.sh
 ```
 
-The script presents a numbered choice:
+The menu offers **Small** (full features), **Micro** (reduced features), and **Extreme** (reduced + UPX). The script verifies SHA256 checksums and binary execution, then updates only:
 
-- **1 — Safe:** Combined CLI/daemon, full upstream feature set; larger executable.
-- **2 — Small:** Upstream `--extra-small`, omits some features. Not functionally tested on NR3053.
-- **3 — Extreme:** Small with UPX compression; highest risk and not functionally tested on NR3053.
+- `/usr/sbin/tailscaled`
+- `/usr/bin/tailscale` (symlink)
 
-The installer will ask again before writing anything. It first downloads the release archive and detached SHA256, validates the archive and contained executable, tries `tailscale version` and the daemon version, and checks NAND free space. It makes RAM-only copies of existing files before replacing two paths:
+It does **not** start or restart the daemon, run `tailscale up`, or edit DNS, routes, firewall, authentication, or init scripts. A currently running daemon continues using its previous binary until you restart it.
 
-```
-/usr/sbin/tailscaled    (single combined executable)
-/usr/bin/tailscale      (symlink -> /usr/sbin/tailscaled)
-```
+Existing binaries are backed up to `/tmp/microscale-backup.*`; these backups disappear on reboot. Keep another copy if you need persistent rollback, and install through local SSH rather than your only Tailscale connection.
 
-**The script installs binaries only.** It does not call `tailscale up`, `tailscale login`, start/restart/enable/disable init scripts, configure Exit Node/Subnet Router, change UCI, set DNS, edit firewall or routes, change Tailscale state, or reboot the router. Installation of an updated on-disk executable does **not** update a daemon process already running; you must handle service restart manually.
-
-## Recovery
-
-The original binaries are temporarily retained under the `/tmp/microscale-backup.XXXXXX` directory printed by the script. **This backup disappears on reboot.** Copy these files to another machine before reboot if long-term rollback is needed. The script attempts rollback if its own file replacement fails, but power loss during NAND writes is not fully recoverable from an in-RAM backup.
-
-For a manual binary-only restore while the RAM backup is present (example; replace the path with the one printed by the installer):
-
-```sh
-BACKUP=/tmp/microscale-backup.XXXXXX
-# Only use a verified backup directory from this installer.
-# Stage each file then atomically rename; cp -a also preserves original symlinks.
-for spec in "tailscaled:/usr/sbin/tailscaled" "tailscale:/usr/bin/tailscale"; do
-    name=${spec%%:*}
-    target=${spec#*:}
-    [ -e "$BACKUP/$name" ] || [ -L "$BACKUP/$name" ] || continue
-    cp -a "$BACKUP/$name" "$target.rollback.new" || exit 1
-    mv -f "$target.rollback.new" "$target" || exit 1
-done
-```
-
-The snippet only restores files present in the RAM backup. If Tailscale was not originally installed, any newly installed paths must be removed deliberately instead. Do not attempt restoration without a local SSH recovery path.
-
-## Limits
-
-- Supports ARM64 only; unsupported CPUs are rejected without changes.
-- Linux binaries are loaded directly from the release. The script does not install missing libraries or modules.
-- A successful CLI version check is **not** evidence that Exit Node, login, subnet routing, MagicDNS, Tailscale SSH, or reconnect work.
-- No new init service is created for a first-time installation. The user configures and operates Tailscale themselves.
-- Never invoke the installer over the only active Tailscale SSH/VPN connection if loss of management access would be unrecoverable.
+**Micro and Extreme are experimental.** Successful CLI tests do not confirm login, Exit Node, subnet routing, or reconnect. The ARM64 build has not been fully qualified on NR3053.

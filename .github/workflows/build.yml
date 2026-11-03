@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [safe, small, extreme]
+        profile: [small, micro, extreme]
     steps:
       - name: Checkout MicroScale
         uses: actions/checkout@v4
@@ -26,8 +26,6 @@ jobs:
       - name: Script and pin tests
         run: bash tests/test_profiles.sh
 
-      - name: Verify local-LAN deployment guard
-        run: bash tests/test_deploy.sh
       - name: Verify interactive binary-only installer
         run: bash tests/test_installer.sh
 

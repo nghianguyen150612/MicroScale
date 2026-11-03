@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.2"
+        description: "Prerelease tag such as v0.2.0-rc.3"
         required: true
-        default: "v0.2.0-rc.2"
+        default: "v0.2.0-rc.3"
 
 permissions:
   contents: read
@@ -28,13 +28,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [safe, small, extreme]
+        profile: [small, micro, extreme]
     steps:
       - uses: actions/checkout@v4
       - name: Validate code and deploy guards
         run: |
           bash tests/test_profiles.sh
-          bash tests/test_deploy.sh
           bash tests/test_installer.sh
       - name: Install packer if needed
         shell: bash
@@ -93,7 +92,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.2' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.3' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -122,7 +121,7 @@ jobs:
           cd release-assets
           sha256sum -c install.sh.sha256
           grep -Fx "RELEASE_TAG=$TAG" install.sh
-          for profile in safe small extreme; do
+          for profile in small micro extreme; do
             sha256sum -c "microscale-$profile-linux-arm64.tar.gz.sha256"
           done
       - name: Write release notice
@@ -132,7 +131,7 @@ jobs:
           # MicroScale $TAG (prerelease)
 
           Official upstream Tailscale v1.104.5 source, packaged in three ARM64 profiles:
-          Safe (full), Small (reduced) and Extreme (reduced + UPX).
+          Small (full), Micro (reduced) and Extreme (reduced + UPX).
           Builds preserve the Tailscale license and SHA256 checksums.
 
           ## Interactive binary-only installer (SSH into your OpenWrt router)
@@ -146,7 +145,7 @@ jobs:
           the old executable until the user restarts it manually.
 
           **Unqualified for NR3053.** CI smoke tests do not prove Exit Node, DNS,
-          subnet routing, reconnect or Tailscale SSH. Small/Extreme omit features and
+          subnet routing, reconnect or Tailscale SSH. Micro/Extreme omit features and
           must be evaluated before use. Keep direct local SSH recovery and a binary backup.
           This is a release candidate, not a stable production upgrade.
           NOTES

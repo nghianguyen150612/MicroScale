@@ -3,12 +3,13 @@ set -Eeuo pipefail
 for script in scripts/build.sh scripts/verify.sh scripts/benchmark.sh tests/test_profiles.sh; do
   bash -n "$script"
 done
-source profiles/safe.env
+source profiles/small.env
 expected_version="$UPSTREAM_VERSION"
 expected_commit="$UPSTREAM_COMMIT"
 [[ "$expected_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
 [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || exit 1
-for profile in safe small extreme; do
+[[ ! -e profiles/safe.env ]] || { echo "legacy profile found" >&2; exit 1; }
+for profile in small micro extreme; do
   [[ -f "profiles/$profile.env" ]] || exit 1
   source "profiles/$profile.env"
   [[ "$UPSTREAM_VERSION" == "$expected_version" ]] || exit 1

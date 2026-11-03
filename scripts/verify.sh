@@ -47,7 +47,7 @@ if [[ "$host_goarch" != "$expected_arch" ]]; then
   exit 0
 fi
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/profiles/safe.env"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/profiles/small.env"
 expected_version="${UPSTREAM_VERSION#v}"
 cli_version="$(TS_BE_CLI=1 "$binary" version 2>&1)" || fail "combined CLI version command failed"
 [[ "$cli_version" == *"$expected_version"* ]] || fail "unexpected CLI version output: $cli_version"

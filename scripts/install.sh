@@ -5,7 +5,7 @@
 set -eu
 umask 077
 
-RELEASE_TAG="v0.2.0-rc.2"
+RELEASE_TAG="v0.2.0-rc.3"
 REPOSITORY="nghianguyen150612/MicroScale"
 DAEMON="/usr/sbin/tailscaled"
 CLI="/usr/bin/tailscale"
@@ -22,7 +22,7 @@ fail() { printf 'MicroScale ERROR: %s\n' "$*" >&2; exit 1; }
 usage() {
     cat <<'HELP'
 MicroScale installer — download and install Tailscale binaries only.
-Usage: sh install.sh [--profile safe|small|extreme] [--help]
+Usage: sh install.sh [--profile small|micro|extreme] [--help]
 
 Without --profile, the installer shows a three-choice interactive menu.
 Installation still requires an explicit confirmation.
@@ -101,23 +101,23 @@ if [ -z "$profile" ]; then
     say "====================================="
     say " MicroScale $RELEASE_TAG — installer"
     say "====================================="
-    say "1) Safe    — complete upstream features; larger ELF (~40 MiB)"
-    say "2) Small   — reduced features (~13 MiB), experimental on NR3053"
-    say "3) Extreme — reduced + UPX (~3.4 MiB), experimental on NR3053"
+    say "1) Small   — full features (~40 MiB)"
+    say "2) Micro   — reduced features (~13 MiB), not yet device-tested"
+    say "3) Extreme — reduced + UPX (~3.4 MiB), not yet device-tested"
     printf 'Choose profile [1/2/3]: '
     IFS= read -r answer </dev/tty || fail "Interactive terminal required"
     case "$answer" in
-        1) profile=safe ;;
-        2) profile=small ;;
+        1) profile=small ;;
+        2) profile=micro ;;
         3) profile=extreme ;;
         *) fail "No profile selected" ;;
     esac
 fi
-case "$profile" in safe|small|extreme) ;; *) fail "Invalid profile: $profile";; esac
+case "$profile" in small|micro|extreme) ;; *) fail "Invalid profile: $profile";; esac
 
 say ""
 say "Selected: $profile ($RELEASE_TAG, linux/arm64)"
-if [ "$profile" != safe ]; then
+if [ "$profile" != small ]; then
     say "WARNING: This profile omits upstream features and has not been qualified on NR3053."
     say "It may lack functions you need; install only if you can restore locally."
 fi
