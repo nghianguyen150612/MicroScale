@@ -1,0 +1,78 @@
+name: Upstream Tailscale update watcher
+
+on:
+  schedule:
+    - cron: "0 19 * * *"  # 02:00 Asia/Ho_Chi_Minh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  upstream:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check latest stable upstream
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(sed -n 's/^UPSTREAM_VERSION="\(.*\)"/\1/p' profiles/safe.env)"
+          latest="$(gh api repos/tailscale/tailscale/releases/latest --jq .tag_name)"
+          [[ "$current" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$latest" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Unexpected upstream version: $latest" >&2; exit 1
+          }
+          newest="$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)"
+          if [[ "$latest" == "$current" || "$newest" != "$latest" ]]; then
+            echo "No newer stable release (pinned $current, upstream $latest)"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          commit="$(git ls-remote https://github.com/tailscale/tailscale.git "refs/tags/$latest^{}" | awk 'NR==1{print $1}')"
+          if [[ -z "$commit" ]]; then
+            commit="$(git ls-remote https://github.com/tailscale/tailscale.git "refs/tags/$latest" | awk 'NR==1{print $1}')"
+          fi
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || { echo "Tag resolution failed" >&2; exit 1; }
+          echo "update=true" >> "$GITHUB_OUTPUT"
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Update pinned profiles, never source patches
+        if: steps.check.outputs.update == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+          SHA: ${{ steps.check.outputs.sha }}
+        run: |
+          set -euo pipefail
+          for p in safe small extreme; do
+            sed -i "s/^UPSTREAM_VERSION=.*/UPSTREAM_VERSION=\"$VERSION\"/" "profiles/$p.env"
+            sed -i "s/^UPSTREAM_COMMIT=.*/UPSTREAM_COMMIT=\"$SHA\"/" "profiles/$p.env"
+          done
+          bash tests/test_profiles.sh
+          git diff --check
+
+      - name: Open update PR for CI qualification
+        if: steps.check.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          branch: automation/upstream-tailscale
+          delete-branch: true
+          commit-message: "chore: update pinned Tailscale upstream to ${{ steps.check.outputs.version }}"
+          title: "chore: update Tailscale to ${{ steps.check.outputs.version }}"
+          body: |
+            Automated upstream stable update to `${{ steps.check.outputs.version }}`, pinned at `${{ steps.check.outputs.sha }}`.
+
+            CI must rebuild all three profiles. Compare raw ELF/UBIFS savings and manually
+            requalify login, Exit Node, subnet routing, Tailscale SSH and reconnect on NR3053.
+            Do **not** auto-release or deploy. Note: README benchmark numbers from an older version
+            must be updated after tests.
+
+            Requires manual review and merge. GitHub Actions must be allowed to create pull requests.
