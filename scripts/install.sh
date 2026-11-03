@@ -5,7 +5,7 @@ umask 077
 
 RELEASE_TAG=v0.2.0-rc.6
 REPO=nghianguyen150612/MicroScale
-engine_sha=c02579a73bb5e3700baefad1dc031de3c83c853d03adb71b45c8898daea59712
+engine_sha=1db033bba3929695c960b7c9f5563da68cbdd37d3169d47ec31a4e53e8b7bf5b
 
 fail() { printf 'MicroScale bootstrap: %s\n' "$*" >&2; exit 1; }
 awk '$2=="/tmp" && $3=="tmpfs" {ok=1} END{exit !ok}' /proc/mounts ||
