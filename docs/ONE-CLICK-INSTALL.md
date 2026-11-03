@@ -34,11 +34,17 @@ For a manual binary-only restore while the RAM backup is present (example; repla
 ```sh
 BACKUP=/tmp/microscale-backup.XXXXXX
 # Only use a verified backup directory from this installer.
-[ -f "$BACKUP/tailscaled" ] && cp -a "$BACKUP/tailscaled" /usr/sbin/tailscaled
-[ -f "$BACKUP/tailscale" ] && cp -a "$BACKUP/tailscale" /usr/bin/tailscale
+# Stage each file then atomically rename; cp -a also preserves original symlinks.
+for spec in "tailscaled:/usr/sbin/tailscaled" "tailscale:/usr/bin/tailscale"; do
+    name=${spec%%:*}
+    target=${spec#*:}
+    [ -e "$BACKUP/$name" ] || [ -L "$BACKUP/$name" ] || continue
+    cp -a "$BACKUP/$name" "$target.rollback.new" || exit 1
+    mv -f "$target.rollback.new" "$target" || exit 1
+done
 ```
 
-The example is for regular-file backups. An original CLI symlink requires symlink-aware restoration. Do not restore an executable by writing in place while it is being executed; use a temporary file and rename for production recovery.
+The snippet only restores files present in the RAM backup. If Tailscale was not originally installed, any newly installed paths must be removed deliberately instead. Do not attempt restoration without a local SSH recovery path.
 
 ## Limits
 
