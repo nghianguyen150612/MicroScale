@@ -34,7 +34,7 @@ elif is_tmpfs /dev/shm; then
 else
     fail 'No verified tmpfs at /tmp or /dev/shm; refusing disk writes'
 fi
-for dep in awk grep tar sha256sum wc date df mkdir; do
+for dep in awk grep tar sha256sum wc date df mkdir ln; do
     command -v "$dep" >/dev/null 2>&1 || fail "Missing command: $dep"
 done
 
@@ -71,20 +71,22 @@ run_one() {
         fail "Profile mismatch in $asset"
     (cd "$dir" && sha256sum -c SHA256SUMS) || fail "Executable hash mismatch"
     chmod 700 "$dir/microscale"
+    ln -sf microscale "$dir/tailscale"
+    ln -sf microscale "$dir/tailscaled"
     elf_bytes="$(wc -c < "$dir/microscale" | tr -d ' ')"
 
     cli_version=fail
     daemon_version=fail
     cli_help=fail
-    if TS_BE_CLI=1 "$dir/microscale" version >/dev/null 2>&1; then cli_version=ok; fi
-    if "$dir/microscale" --version >/dev/null 2>&1; then daemon_version=ok; fi
-    if TS_BE_CLI=1 "$dir/microscale" --help >/dev/null 2>&1; then cli_help=ok; fi
+    if "$dir/tailscale" version >/dev/null 2>&1; then cli_version=ok; fi
+    if "$dir/tailscaled" --version >/dev/null 2>&1; then daemon_version=ok; fi
+    if "$dir/tailscale" --help >/dev/null 2>&1; then cli_help=ok; fi
 
     peak=NA
     elapsed=NA
     if [ -x /usr/bin/time ] && command -v env >/dev/null 2>&1; then
         if /usr/bin/time -f '%M %e' -o "$dir/time.txt" \
-            env TS_BE_CLI=1 "$dir/microscale" version >/dev/null 2>&1; then
+            env "$dir/tailscale" version >/dev/null 2>&1; then
             read peak elapsed < "$dir/time.txt" || true
             [ -n "$peak" ] || peak=NA
             [ -n "$elapsed" ] || elapsed=NA
