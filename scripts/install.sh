@@ -5,7 +5,7 @@
 set -eu
 umask 077
 
-RELEASE_TAG="v0.2.0-rc.3"
+RELEASE_TAG="v0.2.0-rc.4"
 REPOSITORY="nghianguyen150612/MicroScale"
 DAEMON="/usr/sbin/tailscaled"
 CLI="/usr/bin/tailscale"

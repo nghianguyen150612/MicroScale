@@ -12,7 +12,7 @@ grep -q 'Small' scripts/install.sh
 grep -q 'Micro' scripts/install.sh
 grep -q 'Extreme' scripts/install.sh
 grep -q 'sha256sum -c' scripts/install.sh
-grep -q '^RELEASE_TAG="v0.2.0-rc.3"$' scripts/install.sh
+grep -q '^RELEASE_TAG="v0.2.0-rc.4"$' scripts/install.sh
 
 # Installer must contain no service, networking, or authentication commands.
 # It is deliberately an installation-only operation; the user manages startup.
