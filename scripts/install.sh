@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-RELEASE_TAG=v0.2.0-rc.6
+RELEASE_TAG=v0.2.0-rc.7
 REPO=nghianguyen150612/MicroScale
 engine_sha=48161da5be5a760aa5a0265c1c5003a657957dc5183760ac1e0bdb35cad52e3f
 
