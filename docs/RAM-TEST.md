@@ -49,8 +49,8 @@ The TSV contains only allowlisted fields; no IP, device name, Tailnet identity o
 From the Arch host with a GitHub-authenticated clone of MicroScale:
 
 ```sh
-scp root@192.168.3.1:/tmp/microscale-ram/results.tsv ./router-results.tsv
-bash scripts/import-report.sh --submit ./router-results.tsv
+scp root@192.168.3.1:/tmp/microscale-ram/results.tsv /dev/shm/router-results.tsv
+bash scripts/import-report.sh --submit /dev/shm/router-results.tsv
 ```
 
 The helper validates every field, then opens a **pull request** containing the report. No GitHub token needs to be stored on the router. Alternatively paste `results.tsv` into the ChatGPT conversation and request a PR.
