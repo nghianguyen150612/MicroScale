@@ -95,7 +95,7 @@ jobs:
           set -euo pipefail
           sh -n scripts/install.sh
           cp scripts/install.sh release-assets/install.sh
-          sed -i "s/^RELEASE_TAG=.*/RELEASE_TAG=\\\"$TAG\\\"/" release-assets/install.sh
+          sed -i "s|^RELEASE_TAG=.*|RELEASE_TAG=$TAG|" release-assets/install.sh
           chmod 644 release-assets/install.sh
           (cd release-assets && sha256sum install.sh > install.sh.sha256)
       - name: Validate candidate and download checksums
@@ -108,7 +108,7 @@ jobs:
           }
           cd release-assets
           sha256sum -c install.sh.sha256
-          grep -Fx "RELEASE_TAG=\\\"$TAG\\\"" install.sh
+          grep -Fx "RELEASE_TAG=$TAG" install.sh
           for profile in safe small extreme; do
             sha256sum -c "microscale-$profile-linux-arm64.tar.gz.sha256"
           done
