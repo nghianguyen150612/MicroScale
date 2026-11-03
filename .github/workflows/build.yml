@@ -1,0 +1,50 @@
+name: Build MicroScale
+
+on:
+  push:
+    branches: [main, feat/p001-bootstrap]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout MicroScale
+        uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        shell: bash
+        run: bash -n scripts/build.sh scripts/verify.sh
+
+      - name: Build Linux ARM64 combined binary
+        run: ./scripts/build.sh safe
+
+      - name: Verify Linux ARM64 artifact
+        run: ./scripts/verify.sh dist/safe/linux-arm64/microscale arm64 "$BASELINE_BYTES"
+        env:
+          BASELINE_BYTES: 41733325
+
+      - name: Build native Linux binary for executable smoke tests
+        run: TARGET_GOARCH=amd64 ./scripts/build.sh safe
+
+      - name: Run CLI and daemon smoke tests
+        run: ./scripts/verify.sh dist/safe/linux-amd64/microscale amd64 "$BASELINE_BYTES"
+        env:
+          BASELINE_BYTES: 41733325
+
+      - name: Create SHA256 checksum
+        run: cd dist/safe/linux-arm64 && sha256sum microscale > SHA256SUMS
+
+      - name: Upload Linux ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: microscale-linux-arm64-safe
+          path: dist/safe/linux-arm64/
+          if-no-files-found: error
+          retention-days: 30
