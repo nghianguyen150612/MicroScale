@@ -97,6 +97,12 @@ save_original() {
     # Initial originals and state persist for uninstall, as in Beszel's manager.
     # Abort rather than installing without a rollback record.
     [ -f "$STATE/install-state" ] && return 0
+    # A completed uninstall can be followed by a new installation.
+    # Refresh only manager-owned backups, not Tailscale state or config.
+    if [ -f "$STATE/install-state.restored" ]; then
+        rm -rf "$ORIGINAL" || die 'Cannot refresh restored backup set'
+        rm -f "$STATE/install-state.restored"
+    fi
     mkdir -p "$ORIGINAL"
     # Never overwrite a previous partial backup while state is missing.
     if exists "$ORIGINAL/tailscaled" || exists "$ORIGINAL/tailscale" ||
