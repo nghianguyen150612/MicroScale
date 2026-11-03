@@ -203,10 +203,10 @@ install_binary() {
     # New binaries and manager are staged on their destination filesystems.
     cp "$STAGE/microscale" "$DAEMON.next.$$" || die 'Cannot stage executable'
     chmod 755 "$DAEMON.next.$$"
-    ln -s "$DAEMON" "$CLI.next.$" || die 'Cannot stage CLI symlink'
-    cp "$0" "$MANAGER.next.$" || die 'Cannot stage lifecycle manager'
-    chmod 755 "$MANAGER.next.$" || die 'Cannot make manager executable'
-    ln -s "$MANAGER" "$COMMAND.next.$" || die 'Cannot stage microscale CLI symlink'
+    ln -s "$DAEMON" "$CLI.next.$$" || die 'Cannot stage CLI symlink'
+    cp "$0" "$MANAGER.next.$$" || die 'Cannot stage lifecycle manager'
+    chmod 755 "$MANAGER.next.$$" || die 'Cannot make manager executable'
+    ln -s "$MANAGER" "$COMMAND.next.$$" || die 'Cannot stage microscale CLI symlink'
     hash1="$(sha256sum "$STAGE/microscale" | awk '{print $1}')"
     hash2="$(sha256sum "$DAEMON.next.$$" | awk '{print $1}')"
     [ "$hash1" = "$hash2" ] || die 'NAND staging checksum mismatch'
@@ -214,9 +214,9 @@ install_binary() {
     mv -f "$DAEMON.next.$$" "$DAEMON" || die 'Cannot install executable'
     mv -f "$CLI.next.$$" "$CLI" || die 'Cannot install CLI'
     # Keep a dedicated manager under /usr/lib and user-facing CLI in /usr/bin.
-    mv -f "$MANAGER.next.$" "$MANAGER" || die 'Cannot install lifecycle manager'
-    mv -f "$COMMAND.next.$" "$COMMAND" || die 'Cannot install microscale command'
-    printf 'profile=%s\nrelease=%s\n' "$selected" "$TAG" > "$STATE/install-state.next.$"
+    mv -f "$MANAGER.next.$$" "$MANAGER" || die 'Cannot install lifecycle manager'
+    mv -f "$COMMAND.next.$$" "$COMMAND" || die 'Cannot install microscale command'
+    printf 'profile=%s\nrelease=%s\n' "$selected" "$TAG" > "$STATE/install-state.next.$$"
     mv -f "$STATE/install-state.next.$$" "$STATE/install-state" || die 'Cannot save install state'
     COMMITTED=1
     info "Installed $selected ($TAG); run: microscale status"
