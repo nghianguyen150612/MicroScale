@@ -1,0 +1,80 @@
+name: Build MicroScale (three profiles)
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.profile }} / linux-arm64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [safe, small, extreme]
+    steps:
+      - name: Checkout MicroScale
+        uses: actions/checkout@v4
+
+      - name: Validate scripts
+        run: sh tests/test_scripts.sh
+
+      - name: Fetch pinned Tailscale source
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cat VERSION)
+          expected=$(cat UPSTREAM_COMMIT)
+          git clone --quiet --depth 1 --branch "$version" \
+            https://github.com/tailscale/tailscale.git upstream
+          actual=$(git -C upstream rev-parse HEAD)
+          test "$actual" = "$expected" || {
+            echo "Upstream tag changed! expected $expected got $actual" >&2
+            exit 1
+          }
+
+      - name: Set up upstream Go toolchain
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: upstream/go.mod
+          cache: true
+          cache-dependency-path: upstream/go.sum
+
+      - name: Install ARM64 emulator and optional packer
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user file
+          if [ "${{ matrix.profile }}" = extreme ]; then
+            sudo apt-get install -y upx-ucl
+          fi
+
+      - name: Build profile
+        env:
+          GOARCH: arm64
+        run: sh scripts/build.sh "${{ matrix.profile }}" "$PWD/upstream" "$PWD/dist"
+
+      - name: Verify architecture, checksum, CLI and daemon
+        run: sh scripts/verify.sh "${{ matrix.profile }}" arm64 "$PWD/dist"
+
+      - name: Build metrics
+        shell: bash
+        run: |
+          cat "dist/${{ matrix.profile }}/metrics.tsv" >> "$GITHUB_STEP_SUMMARY"
+          cat "dist/${{ matrix.profile }}/metrics.tsv"
+
+      - name: Upload artifact and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: microscale-${{ matrix.profile }}-linux-arm64
+          path: |
+            dist/microscale-${{ matrix.profile }}-linux-arm64.tar.gz
+            dist/microscale-${{ matrix.profile }}-linux-arm64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
