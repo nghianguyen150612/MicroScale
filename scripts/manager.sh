@@ -255,6 +255,18 @@ install_ram() {
     fi
     prepare_stage
     download_binary "$selected" "$arch"
+    # Download/extraction already occupy tmpfs. Reserve additional space for
+    # the durable RAM copy and 32 MiB of available memory for the running router.
+    candidate_kib=$(( ($(wc -c < "$STAGE/microscale" | tr -d ' ') + 1023) / 1024 ))
+    tmp_free_kib="$(df -k /tmp | awk 'NR==2 {print $4}')"
+    mem_available_kib="$(awk '/^MemAvailable:/ {print $2; exit}' /proc/meminfo)"
+    case "$tmp_free_kib:$mem_available_kib" in
+        *[!0-9:]*|:*|*:) die 'Cannot read tmpfs space or MemAvailable' ;;
+    esac
+    [ "$tmp_free_kib" -gt $((candidate_kib + 8192)) ] ||
+        die 'Not enough tmpfs space to retain a second binary copy in RAM'
+    [ "$mem_available_kib" -gt $((candidate_kib + 32768)) ] ||
+        die 'Insufficient available memory to stage safely; clear old test files'
     ready="$STAGE/ready"
     mkdir -p "$ready/bin" || die 'Cannot prepare RAM stage'
     cp "$STAGE/microscale" "$ready/microscale" || die 'Cannot stage RAM binary'
