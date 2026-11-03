@@ -29,6 +29,9 @@ jobs:
       - name: Verify interactive binary-only installer
         run: bash tests/test_installer.sh
 
+      - name: Validate RAM test and report importer
+        run: bash tests/test_ram.sh
+
       - name: Install benchmark tools and packer
         shell: bash
         run: |
