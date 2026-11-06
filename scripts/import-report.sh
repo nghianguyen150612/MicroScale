@@ -28,7 +28,9 @@ done
 [[ "$submit" != true || "$validate_only" != true ]] ||
   fail '--submit and --validate-only cannot be combined'
 if [[ -n "$device" ]]; then
-  model_pattern='^[A-Za-z0-9][A-Za-z0-9 ._+()/,-]*
+  cleaned="$(printf '%s' "$device" | LC_ALL=C tr -cd 'A-Za-z0-9 ._+()/,-')"
+  [[ "${#device}" -le 80 && "$device" == "$cleaned" ]] ||
+    fail 'Device model must be one line of ASCII model-name characters (max 80)'
 fi
 
 # Check the caller's path BEFORE resolving symlinks.
