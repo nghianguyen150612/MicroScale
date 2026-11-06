@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Stable release tag such as v0.2.0"
+        description: "Stable release tag such as v0.2.1"
         required: true
-        default: "v0.2.0"
+        default: "v0.2.1"
 
 permissions:
   contents: read
@@ -39,6 +39,7 @@ jobs:
           bash tests/test_ram.sh
           bash tests/test_manager.sh
           bash tests/test_ram_stage.sh
+          bash tests/test_device_reports.sh
       - name: Install packer if needed
         shell: bash
         run: |
@@ -98,7 +99,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'v0.2.0' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'v0.2.1' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -168,6 +169,10 @@ jobs:
           using /var/lib/microscale require manual migration after saving backups.
           It **never** enables/starts/restarts Tailscale, changes DNS/firewall/routes,
           or alters Tailscale authentication and state.
+
+          New shared RAM tester for physical devices and VMs writes sanitized
+          latest.tsv results. An authenticated host can collect them over SSH
+          and submit a reviewable GitHub PR; no tokens are stored on the router.
 
           Release assets: three profiles x ARM64/AMD64, SHA256 sidecars,
           install.sh, manager.sh and ram-test.sh, with checksums.

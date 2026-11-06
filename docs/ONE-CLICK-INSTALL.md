@@ -7,7 +7,7 @@ The MicroScale installer uses a checksum-pinned bootstrap, a separate POSIX shel
 Run as root over local LAN SSH:
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
 ```
 
 The bootstrap downloads the release's `manager.sh`, checks the SHA256 digest pinned in `install.sh`, then runs the verified local copy. **Choose Install to RAM first**. Pick the profile and confirm staging. Restart the same installer to apply the verified RAM stage to NAND.
@@ -41,6 +41,10 @@ RAM layout:
 ```
 
 **No files under `/usr` or `/etc` are changed in RAM mode.** Running Tailscale processes and configuration remain untouched.
+
+## RAM test and logging
+
+`microscale test-ram all` runs the same smoke tests on real ARM64 OpenWrt devices and Linux x86_64 VMs. `microscale test-ram staged` tests exactly the current RAM-stage binary, with SHA256 verification. `microscale report` displays sanitized results from tmpfs; the latest run is `latest.tsv`. See [how to collect and submit results](DEVICE-REPORTS.md).
 
 ## Installed paths
 

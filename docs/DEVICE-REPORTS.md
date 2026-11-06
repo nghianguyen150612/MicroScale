@@ -11,11 +11,8 @@ Download the checksum-pinned bootstrap from [v0.2.1](https://github.com/nghiangu
 ```sh
 # For OpenWrt: download this installer into tmpfs (/tmp).
 cd /tmp
-wget -O microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh
-wget -O microscale-install.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh.sha256
-# The checksum file refers to install.sh, so verify with matching name:
-cp microscale-install.sh install.sh
-cp microscale-install.sh.sha256 install.sh.sha256
+wget -O install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh
+wget -O install.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh.sha256
 sha256sum -c install.sh.sha256
 sh install.sh test-ram all
 sh install.sh report

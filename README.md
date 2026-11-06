@@ -22,7 +22,8 @@ Embedded devices often have limited flash and RAM. MicroScale packages a combine
 - **Safe bootstrap** — download, verify a pinned SHA256 digest, then execute `manager.sh`.
 - **Lifecycle commands** — install, update, repair, status, diagnostics, doctor, version, uninstall.
 - **Install to RAM first** — stage a checksummed executable under `/tmp/microscale-stage` without changing system binaries; rerun installer to apply the same verified profile to NAND.
-- **RAM-only testing** — measure CLI size and one-shot RSS without installing or restarting Tailscale.
+- **RAM-only testing** — use the same `test-ram` command on physical OpenWrt and Linux VMs, including verified staged binaries, with sanitized per-run TSV logs.
+- **Repository evidence** — collect physical-device logs by SSH from Arch and open a reviewed GitHub PR without giving the router a token.
 - **Binary-only scope** — never automatically configure a Tailnet, DNS, firewall, routes or services.
 
 ## Quick Start
@@ -30,7 +31,7 @@ Embedded devices often have limited flash and RAM. MicroScale packages a combine
 > Requires root, a supported **ARM64 OpenWrt** system, working HTTPS download tools, writable overlay space and direct LAN SSH. Review the [compatibility notes](#compatibility) first.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
 ```
 
 Choose **Install to RAM** and a Small/Micro/Extreme profile. Test the staged binary:
@@ -75,6 +76,9 @@ manager.sh (POSIX shell)
 ```sh
 microscale install-ram micro
 microscale ram-status
+microscale test-ram staged
+microscale test-ram all
+microscale report
 microscale apply   # Commit verified staged RAM binary to NAND
 microscale clear-ram
 microscale install micro
@@ -113,6 +117,10 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 ## Test without installing
 
 Use the installer **Install to RAM** option for a staged executable that can later be applied to NAND, or download [`ram-test.sh`](docs/RAM-TEST.md) for automatic smoke measurements. Neither changes system executables or services.
+
+## Save real-device RAM results to GitHub
+
+From an authenticated Arch host, `bash scripts/collect-device-report.sh --submit root@ROUTER_IP all` runs the same RAM tester over SSH, validates the resulting TSV and opens a reviewable PR under `reports/`. Credentials remain on Arch. See [device reports](docs/DEVICE-REPORTS.md).
 
 ## Build from source
 

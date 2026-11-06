@@ -22,7 +22,8 @@ Các router thường có flash và RAM hạn chế. MicroScale đóng gói CLI 
 - **Bootstrap có kiểm tra SHA256** — chỉ chạy manager sau khi xác minh file.
 - **Quản lý vòng đời** — cài, cập nhật, repair, status, diagnostics, doctor và uninstall.
 - **Cài vào RAM trước** — lưu binary đã kiểm tra SHA256 tại `/tmp/microscale-stage`; chạy lại installer để áp dụng chính binary này vào NAND.
-- **Thử nghiệm trong RAM** — không ghi NAND, không thay daemon đang chạy.
+- **Test RAM thống nhất** — dùng `test-ram` trên router thật và VM, kiểm tra bản đã stage hoặc binary tải về, ghi TSV cho từng lần chạy.
+- **Lưu kết quả lên repo** — máy Arch thu log qua SSH và mở PR, không cần GitHub token trên router.
 - **Không cấu hình VPN** — không can thiệp DNS, firewall, route, dịch vụ hoặc Tailscale state.
 
 ## Bắt đầu nhanh
@@ -30,7 +31,7 @@ Các router thường có flash và RAM hạn chế. MicroScale đóng gói CLI 
 > Cần OpenWrt **ARM64**, SSH qua LAN, quyền root, HTTPS và đủ dung lượng overlay. Đọc phần [tương thích](#khả-năng-tương-thích) trước khi cài.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
 ```
 
 Chọn **Install to RAM**, tiếp đến chọn Small, Micro hoặc Extreme. Thử bản đang nằm trong RAM:
@@ -75,6 +76,9 @@ Trạng thái của MicroScale nằm tại `/etc/microscale`, phù hợp hơn v�
 ```sh
 microscale install-ram micro
 microscale ram-status
+microscale test-ram staged
+microscale test-ram all
+microscale report
 microscale apply   # Ghi bản đã xác minh từ RAM vào NAND
 microscale clear-ram
 microscale install micro
@@ -113,6 +117,10 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 ## Thử trong RAM mà không cài đặt
 
 Có thể dùng **Install to RAM** để thử trước rồi Apply sang NAND, hoặc dùng [`ram-test.sh`](docs/RAM-TEST.md) để tự động đo CLI trong tmpfs. Cả hai không thay daemon hệ thống.
+
+## Lưu log test thiết bị thật
+
+Từ máy Arch đã đăng nhập GitHub CLI, chạy `bash scripts/collect-device-report.sh --submit root@ROUTER_IP all`. Lệnh dùng cùng bài test RAM qua SSH và tạo PR lưu log đã lọc vào `reports/`, không chuyển token tới router. Xem [hướng dẫn](docs/DEVICE-REPORTS.md).
 
 ## Tự build
 
