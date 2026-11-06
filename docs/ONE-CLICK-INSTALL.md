@@ -7,7 +7,7 @@ The MicroScale installer uses a checksum-pinned bootstrap, a separate POSIX shel
 Run as root over local LAN SSH:
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/install.sh && sh /tmp/microscale-install.sh
 ```
 
 The bootstrap downloads the release's `manager.sh`, checks the SHA256 digest pinned in `install.sh`, then runs the verified local copy. **Choose Install to RAM first**. Pick the profile and confirm staging. Restart the same installer to apply the verified RAM stage to NAND.

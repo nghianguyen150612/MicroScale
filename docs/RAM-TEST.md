@@ -6,8 +6,8 @@ These tests do **not** install Tailscale or modify services. RAM results are wri
 
 ```sh
 cd /tmp
-wget -O ram-test.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/ram-test.sh
-wget -O ram-test.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/ram-test.sh.sha256
+wget -O ram-test.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/ram-test.sh
+wget -O ram-test.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/ram-test.sh.sha256
 sha256sum -c ram-test.sh.sha256 && sh ram-test.sh all
 cat /tmp/microscale-ram/results.tsv
 ```
@@ -16,8 +16,8 @@ cat /tmp/microscale-ram/results.tsv
 
 ```sh
 cd /dev/shm
-curl -fL -o ram-test.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/ram-test.sh
-curl -fL -o ram-test.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/ram-test.sh.sha256
+curl -fL -o ram-test.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/ram-test.sh
+curl -fL -o ram-test.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0/ram-test.sh.sha256
 sha256sum -c ram-test.sh.sha256 && sh ram-test.sh all
 cat /dev/shm/microscale-ram/results.tsv
 ```

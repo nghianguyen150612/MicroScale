@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-TAG=v0.2.0-rc.7
+TAG=v0.2.0
 REPO=nghianguyen150612/MicroScale
 DAEMON=/usr/sbin/tailscaled
 CLI=/usr/bin/tailscale
