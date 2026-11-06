@@ -40,7 +40,7 @@ jobs:
             [[ "$count" -le 10 ]] || { echo 'Too many report files' >&2; exit 1; }
             git show "$head_sha:$path" > "$tmp/report.tsv"
             bash scripts/import-report.sh --validate-only "$tmp/report.tsv"
-          done < <(git diff --name-only -z HEAD "$head_sha")
+          done < <(git diff --name-only -z "$(git merge-base HEAD "$head_sha")" "$head_sha")
           [[ "$count" -gt 0 ]] || { echo 'No report data to validate' >&2; exit 1; }
           echo "PASS: $count file(s) satisfy the sanitized TSV schema"
           echo 'Contributor-provided measurements are NOT hardware-attested.'
