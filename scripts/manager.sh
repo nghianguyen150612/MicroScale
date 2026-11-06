@@ -111,8 +111,8 @@ cleanup() {
             info 'WARNING: microscale command rollback failed; verify manually'
     fi
     if [ "$NAND_STAGING" = 1 ]; then
-        rm -f "$DAEMON.next.$" "$CLI.next.$" "$DAEMON.restore.$" "$CLI.restore.$"
-        rm -f "$MANAGER.next.$" "$MANAGER.restore.$" "$COMMAND.next.$" "$COMMAND.restore.$"
+        rm -f "$DAEMON.next.$$" "$CLI.next.$$" "$DAEMON.restore.$$" "$CLI.restore.$$"
+        rm -f "$MANAGER.next.$$" "$MANAGER.restore.$$" "$COMMAND.next.$$" "$COMMAND.restore.$$"
     fi
     [ -z "$STAGE" ] || rm -rf "$STAGE"
     exit "$code"
@@ -302,7 +302,7 @@ nand_commit() {
     save_original
     mkdir -p "$MANAGER_DIR" || die 'Cannot create manager directory'
     NAND_STAGING=1
-    cp "$candidate" "$DAEMON.next.$" || die 'Cannot stage executable'
+    cp "$candidate" "$DAEMON.next.$$" || die 'Cannot stage executable'
     chmod 755 "$DAEMON.next.$$"
     ln -s "$DAEMON" "$CLI.next.$$" || die 'Cannot stage CLI symlink'
     cp "$0" "$MANAGER.next.$$" || die 'Cannot stage lifecycle manager'
