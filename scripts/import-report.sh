@@ -4,13 +4,21 @@ set -Eeuo pipefail
 fail() { echo "MicroScale report import: $*" >&2; exit 1; }
 
 submit=no
-if [[ "${1:-}" == "--submit" ]]; then
-  submit=yes
-  shift
-fi
-[[ $# -eq 1 ]] || fail "Usage: bash scripts/import-report.sh [--submit] FILE.tsv"
+validate_only=no
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --submit) submit=yes; shift ;;
+    --validate-only) validate_only=yes; shift ;;
+    *) break ;;
+  esac
+done
+[[ $# -eq 1 ]] || fail "Usage: bash scripts/import-report.sh [--submit|--validate-only] FILE.tsv"
+[[ "$submit" != yes || "$validate_only" != yes ]] ||
+  fail "Use --submit or --validate-only, not both"
 source_file="$(realpath "$1")"
-[[ -f "$source_file" ]] || fail "Missing input TSV"
+[[ -f "$source_file" && ! -L "$source_file" ]] || fail "Missing or symlinked input TSV"
+bytes="$(wc -c < "$source_file" | tr -d ' ')"
+[[ "$bytes" -le 262144 ]] || fail 'Report exceeds 256 KiB'
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 [[ -d .git ]] || fail "Run from a Git clone"
@@ -24,7 +32,7 @@ awk -F '\t' '
   }
   NR==1 { if ($0!=want) bad=1; next }
   {
-    if (NF!=14) bad=1
+    if (NF!=14 || NR>1001) bad=1
     if ($1 !~ /^[0-9TZ:-]+$/) bad=1
     if ($2 !~ /^(openwrt|linux)$/) bad=1
     if ($3 !~ /^(arm64|amd64)$/) bad=1
@@ -39,6 +47,11 @@ awk -F '\t' '
   }
   END { if (NR<2 || bad) exit 1 }
 ' "$source_file" || fail "Report rejected: invalid schema or potentially sensitive content"
+
+if [[ "$validate_only" == yes ]]; then
+  echo "PASS: sanitized RAM report accepted"
+  exit 0
+fi
 
 if [[ "$submit" == yes ]]; then
   command -v gh >/dev/null || fail "gh CLI is required for --submit"

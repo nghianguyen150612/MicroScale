@@ -38,6 +38,9 @@ jobs:
       - name: Test RAM-stage lifecycle and NAND apply gating
         run: bash tests/test_ram_stage.sh
 
+      - name: Validate RAM device reports and PR collection
+        run: bash tests/test_device_reports.sh
+
       - name: Install benchmark tools and packer
         shell: bash
         run: |

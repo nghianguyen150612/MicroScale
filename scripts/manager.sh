@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-TAG=v0.2.0
+TAG=v0.2.1
 REPO=nghianguyen150612/MicroScale
 DAEMON=/usr/sbin/tailscaled
 CLI=/usr/bin/tailscale
@@ -434,6 +434,43 @@ uninstall() {
     info 'Original binary files restored. Tailscale state/config/service untouched.'
     info 'Manager and original backups retained for inspection.'
 }
+test_ram() {
+    # Same non-invasive runner used by real routers and Linux VMs.
+    selection="${1:-}"
+    case "$selection" in small|micro|extreme|all|staged|'') ;; *) die 'Invalid RAM test profile' ;; esac
+    if is_tmpfs /tmp; then
+        STAGE="$(mktemp -d /tmp/microscale-test.XXXXXX)" || die 'Cannot stage RAM test'
+    elif is_tmpfs /dev/shm; then
+        STAGE="$(mktemp -d /dev/shm/microscale-test.XXXXXX)" || die 'Cannot stage RAM test'
+    else
+        die 'No verified tmpfs available for RAM test'
+    fi
+    base="https://github.com/$REPO/releases/download/$TAG"
+    fetch "$STAGE/ram-test.sh" "$base/ram-test.sh" || die 'Cannot fetch RAM tester'
+    fetch "$STAGE/ram-test.sh.sha256" "$base/ram-test.sh.sha256" || die 'Cannot fetch tester checksum'
+    (cd "$STAGE" && sha256sum -c ram-test.sh.sha256) ||
+        die 'RAM tester SHA256 mismatch'
+    if [ -n "$selection" ]; then
+        sh "$STAGE/ram-test.sh" "$selection"
+    else
+        sh "$STAGE/ram-test.sh"
+    fi
+}
+report_ram() {
+    report_path=""
+    if is_tmpfs /tmp && [ -f /tmp/microscale-ram/results.tsv ]; then
+        report_path=/tmp/microscale-ram/results.tsv
+    elif is_tmpfs /dev/shm && [ -f /dev/shm/microscale-ram/results.tsv ]; then
+        report_path=/dev/shm/microscale-ram/results.tsv
+    fi
+    [ -n "$report_path" ] || die 'No RAM report found; run test-ram first'
+    [ ! -L "$report_path" ] || die 'Refusing symlinked report'
+    cat "$report_path"
+    info 'This output contains only numeric/enum fields, not Tailnet data'
+    info 'To upload as a reviewed GitHub PR, run from Arch:'
+    info '  bash scripts/collect-device-report.sh --submit root@ROUTER_IP all'
+    info 'GitHub authentication stays on the host, never on the router'
+}
 version() {
     info "MicroScale manager $TAG"
     if [ -r "$STATE/install-state" ]; then
@@ -441,7 +478,7 @@ version() {
     fi
 }
 usage() {
-    printf 'Usage: microscale [install-ram|apply|ram-status|clear-ram|install|update|repair|status|doctor|diagnostics|uninstall|version|help] [small|micro|extreme]\n'
+    printf 'Usage: microscale [test-ram|report|install-ram|apply|ram-status|clear-ram|install|update|repair|status|doctor|diagnostics|uninstall|version|help] [small|micro|extreme|all|staged]\n'
 }
 operation=""
 if [ "$#" -gt 0 ]; then operation="$1"; shift; fi
@@ -453,6 +490,7 @@ if [ -z "$operation" ]; then
     info '3) Install/Update directly to NAND'
     info '4) RAM status   5) Status   6) Doctor   7) Diagnostics'
     info '8) Repair       9) Uninstall   0) Clear RAM stage'
+    info 't) Test RAM (and log)     l) View RAM report'
     ask 'Action [0-9]: '
     case "$answer" in
         1) operation=install-ram ;;
@@ -465,10 +503,15 @@ if [ -z "$operation" ]; then
         8) operation=repair ;;
         9) operation=uninstall ;;
         0) operation=clear-ram ;;
+        t|T) operation=test-ram ;;
+        l|L) operation=report ;;
         *) die 'Invalid menu selection' ;;
     esac
 fi
 case "$operation" in
+    test-ram|test)
+        requested=""; [ "$#" -eq 0 ] || requested="$1"; test_ram "$requested" ;;
+    report|test-report) report_ram ;;
     install-ram|ram-install)
         requested=""; [ "$#" -eq 0 ] || requested="$1"; install_ram "$requested" ;;
     apply|apply-nand)
