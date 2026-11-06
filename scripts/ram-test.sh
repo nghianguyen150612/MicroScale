@@ -43,9 +43,12 @@ root="$ram_base/microscale-ram"
 mkdir -p "$root"
 report="$root/results.tsv"
 [ ! -L "$report" ] || fail "Refusing symlinked report file"
+latest="$root/latest.tsv"
+[ ! -L "$latest" ] || fail "Refusing symlinked latest report"
 if [ ! -f "$report" ]; then
     printf 'utc\tplatform\tarch\tprofile\trelease\telf_bytes\tram_total_kib\tram_available_kib\tcli_version\tdaemon_version\tcli_help\tcli_peak_rss_kib\tcli_elapsed_s\tresult\n' > "$report"
 fi
+printf 'utc\tplatform\tarch\tprofile\trelease\telf_bytes\tram_total_kib\tram_available_kib\tcli_version\tdaemon_version\tcli_help\tcli_peak_rss_kib\tcli_elapsed_s\tresult\n' > "$latest"
 if [ -f /etc/openwrt_release ]; then platform=openwrt; else platform=linux; fi
 ram_total="$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)"
 ram_avail="$(awk '/^MemAvailable:/ { print $2; exit }' /proc/meminfo)"
@@ -129,10 +132,12 @@ run_one() {
         result=PASS
     fi
     utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    line="$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
         "$utc" "$platform" "$arch" "$profile" "$RELEASE_TAG" \
         "$elf_bytes" "$ram_total" "$ram_avail" \
-        "$cli_version" "$daemon_version" "$cli_help" "$peak" "$elapsed" "$result" >> "$report"
+        "$cli_version" "$daemon_version" "$cli_help" "$peak" "$elapsed" "$result")"
+    printf '%s\n' "$line" >> "$report"
+    printf '%s\n' "$line" >> "$latest"
     printf '%s: %s (ELF: %s bytes, CLI RSS peak: %s KiB)\n' \
         "$profile" "$result" "$elf_bytes" "$peak"
     [ "$result" = PASS ]
@@ -169,5 +174,6 @@ case "$selection" in
         ;;
     *) fail 'Choose small, micro, extreme or all' ;;
 esac
-printf '\nSanitized report (RAM): %s\n' "$report"
+printf '\nCurrent-run report: %s\n' "$latest"
+printf 'Cumulative report: %s\n' "$report"
 printf 'No system binary, service, VPN state, or network configuration was changed.\n'
