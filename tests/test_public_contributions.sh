@@ -88,7 +88,8 @@ test "$(find "$fixture/clone/reports/community" -name '*.tsv' -type f | wc -l)" 
   PATH="$fixture/mockbin:$PATH" MOCK_ROOT="$fixture" \
     bash scripts/import-report.sh --submit "$fixture/good.tsv"
 )
-test "$(find "$fixture/clone/reports/community" -name '*.tsv' -type f | wc -l)" -eq 2
+# The new submission is based on main, not on the first submission.
+test "$(find "$fixture/clone/reports/community" -name '*.tsv' -type f | wc -l)" -eq 1
 test "$(cd "$fixture/clone" && /usr/bin/git diff --name-only main HEAD | wc -l)" -eq 1
 
 echo 'PASS: community schema, forks and isolated report PR branches'
