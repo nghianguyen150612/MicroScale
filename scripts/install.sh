@@ -5,7 +5,7 @@ umask 077
 
 RELEASE_TAG=v0.2.1
 REPO=nghianguyen150612/MicroScale
-engine_sha=b9b9bd988b0064eebcb1217e11b068e8176f2a1a89895a26c2781535b52a680f
+engine_sha=b1889431b98dff89ef8fd2bc1ab180ab55708ae09e5d38dd36e1166eeaa32a2d
 
 fail() { printf 'MicroScale bootstrap: %s\n' "$*" >&2; exit 1; }
 ram_base=''
