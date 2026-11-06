@@ -118,9 +118,19 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 
 Use the installer **Install to RAM** option for a staged executable that can later be applied to NAND, or download [`ram-test.sh`](docs/RAM-TEST.md) for automatic smoke measurements. Neither changes system executables or services.
 
-## Save real-device RAM results to GitHub
+## Community-tested hardware
 
-From an authenticated Arch host, `bash scripts/collect-device-report.sh --submit root@ROUTER_IP all` runs the same RAM tester over SSH, validates the resulting TSV and opens a reviewable PR under `reports/`. Credentials remain on Arch. See [device reports](docs/DEVICE-REPORTS.md).
+**Anyone can contribute test results—even without push access.** Run the RAM test on your device and let the contributor script create a fork and pull request automatically.
+
+```bash
+gh auth login
+gh auth setup-git
+git clone https://github.com/nghianguyen150612/MicroScale.git
+cd MicroScale
+bash scripts/collect-device-report.sh --submit --device "Optional device model" root@ROUTER_IP all
+```
+
+Already have a `latest.tsv`? Use `bash scripts/import-report.sh --submit /path/to/latest.tsv`. Credentials stay on the contributor's computer. Results are reviewed and stored under [community hardware reports](reports/community/README.md). **These are user-reported CLI smoke tests, not certified VPN compatibility.** See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Build from source
 
