@@ -45,7 +45,7 @@ cd MicroScale
 
 # Validates a pinned installer, tests the real device over SSH,
 # retrieves the per-run report, validates the allowed schema and opens a PR:
-bash scripts/collect-device-report.sh --submit root@ROUTER_IP all
+bash scripts/collect-device-report.sh --submit --device "Optional model" root@ROUTER_IP all
 ```
 
 For a Linux VM, substitute its SSH target. To test an already staged profile, replace `all` with `staged`. Omit `--submit` to see validated results without publishing.
@@ -59,3 +59,18 @@ Each row includes UTC timestamp, platform category (`openwrt` or `linux`), archi
 These are user-submitted test results, not cryptographically attested hardware measurements. Review the PR and the numerical values before merging to `main`.
 
 The installer never restarts the system daemon, changes Tailscale state, edits DNS, routes or firewall rules. RAM test files disappear on reboot.
+
+## Submit as an external contributor
+
+You do not need write access to MicroScale. The host-side importer will create (or reuse) a fork under your own GitHub account and then open a PR against `nghianguyen150612/MicroScale:main`. The optional `--device` label is provided knowingly by the contributor and must not contain a serial number, hostname or identifiable data.
+
+Already have a copied `latest.tsv` file? Run:
+
+```bash
+bash scripts/import-report.sh --validate-only /path/latest.tsv
+bash scripts/import-report.sh --submit --device "Optional model" /path/latest.tsv
+```
+
+Community PRs are validated by `community-report-validation.yml` using the **trusted main-branch validator**, not code from the external fork. Only TSVs in `reports/community/` are accepted by that workflow, and human review is still required. No automatic merge occurs.
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md).
