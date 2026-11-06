@@ -3,7 +3,7 @@ name: Validate community RAM reports
 on:
   pull_request:
     paths:
-      - 'reports/community/**'
+      - 'reports/community/*.tsv'
 
 permissions:
   contents: read
