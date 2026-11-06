@@ -94,7 +94,7 @@ test "$(find "$fixture/clone/reports/community" -name '*.tsv' -type f | wc -l)" 
 test "$(cd "$fixture/clone" && /usr/bin/git diff --name-only main HEAD | wc -l)" -eq 1
 
 echo 'PASS: community schema, forks and isolated report PR branches'
-Router\\nFake-certified' "$fixture/good.tsv" >/dev/null 2>&1; then
+Router\nFake-certified' "$fixture/good.tsv" >/dev/null 2>&1; then
   echo 'FAIL: multiline public model label accepted' >&2; exit 1
 fi
 
