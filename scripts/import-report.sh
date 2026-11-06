@@ -74,6 +74,10 @@ if [[ "$submit" == true ]]; then
   for dep in git gh; do command -v "$dep" >/dev/null || fail "Missing $dep"; done
   [[ -z "$(git status --porcelain)" ]] ||
     fail 'Your Git worktree must be clean before opening a PR'
+  # Start every submission from main, not a previous community report branch.
+  if [[ "$(git branch --show-current)" != main ]]; then
+    git switch main || fail 'Checkout the main branch before submitting'
+  fi
   gh auth status >/dev/null || fail 'Run gh auth login on your workstation'
   login="$(gh api user --jq .login)" || fail 'Cannot determine GitHub account'
   [[ "$login" =~ ^[A-Za-z0-9-]+$ ]] || fail 'Invalid GitHub account name'
