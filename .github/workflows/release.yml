@@ -1,4 +1,4 @@
-name: MicroScale release candidate
+name: MicroScale stable release
 
 on:
   push:
@@ -7,16 +7,16 @@ on:
       - .github/workflows/release.yml
   workflow_dispatch:
     inputs:
-      candidate_tag:
-        description: "Prerelease tag such as v0.2.0-rc.7"
+      release_tag:
+        description: "Stable release tag such as v0.2.0"
         required: true
-        default: "v0.2.0-rc.7"
+        default: "v0.2.0"
 
 permissions:
   contents: read
 
 concurrency:
-  group: microscale-rc-release
+  group: microscale-stable-release
   cancel-in-progress: false
 
 jobs:
@@ -84,13 +84,13 @@ jobs:
           cp "$dir/ARCHIVE.SHA256" "release-assets/microscale-$profile-linux-$arch.tar.gz.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: rc-${{ matrix.profile }}-${{ matrix.arch }}
+          name: package-${{ matrix.profile }}-${{ matrix.arch }}
           path: release-assets/
           retention-days: 30
           if-no-files-found: error
 
-  prerelease:
-    name: Publish prerelease only
+  release:
+    name: Publish stable release
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -98,13 +98,13 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || 'v0.2.0-rc.7' }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'v0.2.0' }}
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: rc-*
+          pattern: package-*
           path: release-assets
           merge-multiple: true
       - name: Stage interactive binary-only installer
@@ -122,12 +122,12 @@ jobs:
           sed -i "s|^RELEASE_TAG=.*|RELEASE_TAG=$TAG|" release-assets/ram-test.sh
           chmod 644 release-assets/install.sh release-assets/ram-test.sh
           (cd release-assets && sha256sum install.sh > install.sh.sha256 && sha256sum ram-test.sh > ram-test.sh.sha256 && sha256sum manager.sh > manager.sh.sha256)
-      - name: Validate candidate and download checksums
+      - name: Validate stable tag and checksums
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]] || {
-            echo "This workflow only permits -rc.N prerelease tags" >&2
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "This workflow only publishes stable semantic-version tags" >&2
             exit 1
           }
           cd release-assets
@@ -173,9 +173,19 @@ jobs:
           install.sh, manager.sh and ram-test.sh, with checksums.
           The RAM tester remains the safe non-installation option on routers.
 
-          No real NR3053 Exit Node or subnet-routing qualification is claimed.
+          ## Validation and support boundary
+          This is the stable version of MicroScale's build packaging, SHA256 integrity
+          checks, binary-only installer and RAM staging workflow. All six build targets
+          and host-side smoke tests must pass before this release is published.
+
+          Device-side validation remains limited to six CLI smoke tests on NR3053.
+          Live login, Exit Node, Subnet Router, reconnect, 24/7 daemon operation,
+          reboot persistence and NAND transaction recovery are NOT certified.
+          Micro and Extreme use reduced/packed builds and remain experimental.
+          Do not deploy to your only remote management path without local SSH and
+          verified backups. The installer does not control the Tailscale service.
           NOTES
-      - name: Publish prerelease
+      - name: Publish stable release
         shell: bash
         run: |
           set -euo pipefail
@@ -184,6 +194,6 @@ jobs:
             exit 1
           }
           gh release create "$TAG" release-assets/* \
-            --target "$GITHUB_SHA" --prerelease \
-            --title "MicroScale $TAG (not router-qualified)" \
+            --target "$GITHUB_SHA" --latest \
+            --title "MicroScale $TAG" \
             --notes-file notes.md
