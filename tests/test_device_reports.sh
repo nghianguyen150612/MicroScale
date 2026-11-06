@@ -6,9 +6,7 @@ bash -n scripts/collect-device-report.sh
 bash -n scripts/import-report.sh
 sh scripts/manager.sh help | grep -q 'test-ram'
 sh scripts/ram-test.sh --help | grep -q 'staged'
-bash scripts/collect-device-report.sh --help >/dev/null 2>&1 && {
-  echo 'Collector should reject missing SSH target' >&2; exit 1;
-}
+bash scripts/collect-device-report.sh --help | grep -q '\-\-device'
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 printf '%s\n' 'utc	platform	arch	profile	release	elf_bytes	ram_total_kib	ram_available_kib	cli_version	daemon_version	cli_help	cli_peak_rss_kib	cli_elapsed_s	result' > "$tmp/good.tsv"
