@@ -438,8 +438,13 @@ test_ram() {
     # Same non-invasive runner used by real routers and Linux VMs.
     selection="${1:-}"
     case "$selection" in small|micro|extreme|all|staged|'') ;; *) die 'Invalid RAM test profile' ;; esac
-    is_tmpfs /tmp || die 'RAM tester bootstrap requires tmpfs /tmp'
-    prepare_stage
+    if is_tmpfs /tmp; then
+        STAGE="$(mktemp -d /tmp/microscale-test.XXXXXX)" || die 'Cannot stage RAM test'
+    elif is_tmpfs /dev/shm; then
+        STAGE="$(mktemp -d /dev/shm/microscale-test.XXXXXX)" || die 'Cannot stage RAM test'
+    else
+        die 'No verified tmpfs available for RAM test'
+    fi
     base="https://github.com/$REPO/releases/download/$TAG"
     fetch "$STAGE/ram-test.sh" "$base/ram-test.sh" || die 'Cannot fetch RAM tester'
     fetch "$STAGE/ram-test.sh.sha256" "$base/ram-test.sh.sha256" || die 'Cannot fetch tester checksum'
