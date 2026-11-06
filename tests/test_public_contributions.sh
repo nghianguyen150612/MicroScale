@@ -12,7 +12,10 @@ header='utc	platform	arch	profile	release	elf_bytes	ram_total_kib	ram_available_
 printf '%s\n' "$header" > "$fixture/good.tsv"
 printf '%s\n' '2026-11-06T07:00:00Z	openwrt	arm64	micro	v0.2.1	13369504	492120	120000	ok	ok	ok	44752	0.01	PASS' >> "$fixture/good.tsv"
 bash scripts/import-report.sh --validate-only "$fixture/good.tsv" | grep -q 'PASS'
-if bash scripts/import-report.sh --validate-only --device 
+bad_label="$(printf 'Router\\012Fake-certified')"
+if bash scripts/import-report.sh --validate-only --device "$bad_label" "$fixture/good.tsv" >/dev/null 2>&1; then
+  echo 'FAIL: multiline device model accepted' >&2; exit 1
+fi
 
 printf '%s\n' "$header" > "$fixture/invalid.tsv"
 printf '%s\n' '2026-11-06T07:00:00Z	openwrt	arm64	micro	v0.2.1	13369504	492120	120000	ok	ok	ok	44752	0.01	PASS	SECRET' >> "$fixture/invalid.tsv"
