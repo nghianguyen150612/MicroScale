@@ -16,7 +16,7 @@ awk -v dir="$fixture" '
         print "RAM_ROOT=\"" dir "/ram\""
         print "require_ram_platform() { :; }"
         print "require_platform() { :; }"
-        print "runtime_arch() { printf \"arm64\\n\"; }"
+        print "runtime_arch() { echo arm64; }"
         print "ensure_command_available() { :; }"
         print "ask() { answer=y; }"
         print "prepare_stage() { STAGE=\"$(mktemp -d \"" dir "/tx.XXXXXX\")\"; }"
