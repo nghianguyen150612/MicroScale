@@ -118,9 +118,19 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 
 Có thể dùng **Install to RAM** để thử trước rồi Apply sang NAND, hoặc dùng [`ram-test.sh`](docs/RAM-TEST.md) để tự động đo CLI trong tmpfs. Cả hai không thay daemon hệ thống.
 
-## Lưu log test thiết bị thật
+## Cộng đồng kiểm thử thiết bị thật
 
-Từ máy Arch đã đăng nhập GitHub CLI, chạy `bash scripts/collect-device-report.sh --submit root@ROUTER_IP all`. Lệnh dùng cùng bài test RAM qua SSH và tạo PR lưu log đã lọc vào `reports/`, không chuyển token tới router. Xem [hướng dẫn](docs/DEVICE-REPORTS.md).
+**Ai cũng có thể gửi log, không cần quyền push vào repo.** Script tự tạo hoặc dùng fork GitHub và mở Pull Request để đóng góp kết quả.
+
+```bash
+gh auth login
+gh auth setup-git
+git clone https://github.com/nghianguyen150612/MicroScale.git
+cd MicroScale
+bash scripts/collect-device-report.sh --submit --device "Tên thiết bị (không bắt buộc)" root@ROUTER_IP all
+```
+
+Nếu đã có `latest.tsv`, dùng `bash scripts/import-report.sh --submit /đường/dẫn/latest.tsv`. Dữ liệu được kiểm tra và chỉ đưa vào `main` sau khi maintainer review. Xem [hướng dẫn đóng góp](CONTRIBUTING.md) và [báo cáo cộng đồng](reports/community/README.md). **PASS CLI không có nghĩa là VPN/Exit Node đã được kiểm chứng.**
 
 ## Tự build
 

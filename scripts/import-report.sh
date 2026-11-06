@@ -1,36 +1,52 @@
 #!/usr/bin/env bash
-# Import strict, non-identifying RAM test results into a reviewable GitHub PR.
+# Accept allowlisted RAM measurements and optionally open a community PR.
+# GitHub authentication is required only on the contributor's workstation.
 set -Eeuo pipefail
-fail() { echo "MicroScale report import: $*" >&2; exit 1; }
 
-submit=no
-validate_only=no
-while [[ $# -gt 0 ]]; do
+UPSTREAM=nghianguyen150612/MicroScale
+fail() { printf 'MicroScale report: %s\n' "$*" >&2; exit 1; }
+usage() {
+  printf 'Usage: bash scripts/import-report.sh [--validate-only|--submit] [--device MODEL] FILE.tsv\n'
+}
+
+submit=false
+validate_only=false
+device=""
+while (($#)); do
   case "$1" in
-    --submit) submit=yes; shift ;;
-    --validate-only) validate_only=yes; shift ;;
+    --submit) submit=true; shift ;;
+    --validate-only) validate_only=true; shift ;;
+    --device)
+      (($# >= 2)) || fail 'Missing device model'
+      device="$2"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    --*) fail "Unknown option: $1" ;;
     *) break ;;
   esac
 done
-[[ $# -eq 1 ]] || fail "Usage: bash scripts/import-report.sh [--submit|--validate-only] FILE.tsv"
-[[ "$submit" != yes || "$validate_only" != yes ]] ||
-  fail "Use --submit or --validate-only, not both"
-source_file="$(realpath "$1")"
-[[ -f "$source_file" && ! -L "$source_file" ]] || fail "Missing or symlinked input TSV"
-bytes="$(wc -c < "$source_file" | tr -d ' ')"
-[[ "$bytes" -le 262144 ]] || fail 'Report exceeds 256 KiB'
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$root"
-[[ -d .git ]] || fail "Run from a Git clone"
+(($# == 1)) || { usage >&2; exit 1; }
+[[ "$submit" != true || "$validate_only" != true ]] ||
+  fail '--submit and --validate-only cannot be combined'
+if [[ -n "$device" ]]; then
+  cleaned="$(printf '%s' "$device" | LC_ALL=C tr -cd 'A-Za-z0-9 ._+()/,-')"
+  [[ "${#device}" -le 80 && "$device" == "$cleaned" ]] ||
+    fail 'Device model must be one line of ASCII model-name characters (max 80)'
+fi
 
-# Do not allow arbitrary hostnames, IPs, Tailnet data, command output, or secrets.
-# The schema consists solely of fixed enums, numbers, and a UTC timestamp.
+# Check the caller's path BEFORE resolving symlinks.
+[[ -f "$1" && ! -L "$1" ]] || fail 'Missing or symlinked input file'
+source_file="$(realpath "$1")"
+bytes="$(wc -c < "$source_file" | tr -d ' ')"
+[[ "$bytes" =~ ^[0-9]+$ && "$bytes" -le 262144 ]] ||
+  fail 'Report is too large (maximum 256 KiB)'
+
+# Only an allowlisted TSV schema is accepted; no logs, IPs, hostnames or secrets.
 awk -F '\t' '
   BEGIN {
-    want="utc\tplatform\tarch\tprofile\trelease\telf_bytes\tram_total_kib\tram_available_kib\tcli_version\tdaemon_version\tcli_help\tcli_peak_rss_kib\tcli_elapsed_s\tresult"
+    header="utc\tplatform\tarch\tprofile\trelease\telf_bytes\tram_total_kib\tram_available_kib\tcli_version\tdaemon_version\tcli_help\tcli_peak_rss_kib\tcli_elapsed_s\tresult"
     bad=0
   }
-  NR==1 { if ($0!=want) bad=1; next }
+  NR==1 { if ($0!=header) bad=1; next }
   {
     if (NF!=14 || NR>1001) bad=1
     if ($1 !~ /^[0-9TZ:-]+$/) bad=1
@@ -46,40 +62,78 @@ awk -F '\t' '
     if ($14 !~ /^(PASS|FAIL)$/) bad=1
   }
   END { if (NR<2 || bad) exit 1 }
-' "$source_file" || fail "Report rejected: invalid schema or potentially sensitive content"
-
-if [[ "$validate_only" == yes ]]; then
-  echo "PASS: sanitized RAM report accepted"
+' "$source_file" || fail 'Invalid report, unsupported columns or potential sensitive data'
+if [[ "$validate_only" == true ]]; then
+  echo 'PASS: sanitized RAM report schema'
   exit 0
 fi
 
-if [[ "$submit" == yes ]]; then
-  command -v gh >/dev/null || fail "gh CLI is required for --submit"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+[[ -d .git ]] || fail 'Clone MicroScale with git before importing'
+if [[ "$submit" == true ]]; then
+  for dep in git gh; do command -v "$dep" >/dev/null || fail "Missing $dep"; done
   [[ -z "$(git status --porcelain)" ]] ||
-    fail "The Git worktree must be clean before --submit"
-  gh auth status >/dev/null || fail "Login to GitHub with gh first"
+    fail 'Your Git worktree must be clean before opening a PR'
+  # Start every submission from main, not a previous community report branch.
+  if [[ "$(git branch --show-current)" != main ]]; then
+    git switch main || fail 'Checkout the main branch before submitting'
+  fi
+  gh auth status >/dev/null || fail 'Run gh auth login on your workstation'
+  login="$(gh api user --jq .login)" || fail 'Cannot determine GitHub account'
+  [[ "$login" =~ ^[A-Za-z0-9-]+$ ]] || fail 'Invalid GitHub account name'
+  if [[ "$login" == "${UPSTREAM%%/*}" ]]; then
+    push_url="https://github.com/$UPSTREAM.git"
+  else
+    fork="$login/MicroScale"
+    if gh api "repos/$fork" >/dev/null 2>&1; then
+      parent="$(gh api "repos/$fork" --jq '.parent.full_name // ""')" ||
+        fail 'Cannot inspect existing repository'
+      [[ "$parent" == "$UPSTREAM" ]] ||
+        fail "Existing $fork is not a fork of $UPSTREAM"
+    else
+      echo "Creating your public fork: $fork"
+      gh repo fork "$UPSTREAM" --clone=false ||
+        fail "Could not create fork $fork"
+    fi
+    push_url="https://github.com/$fork.git"
+  fi
 fi
 
-timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p reports
-destination="$(mktemp "$root/reports/ram-$timestamp-XXXXXX.tsv")"
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p reports/community
+destination="$(mktemp "$root/reports/community/ram-$stamp-XXXXXX.tsv")"
 cp "$source_file" "$destination"
 chmod 644 "$destination"
-relative="reports/$(basename "$destination")"
-printf 'Validated report: %s\n' "$relative"
+relative="${destination#"$root/"}"
+printf 'Sanitized report: %s\n' "$relative"
 
-if [[ "$submit" == yes ]]; then
-  branch="test/ram-$timestamp"
-  git switch -c "$branch"
-  git add "$relative"
-  git commit -m "test: add sanitized MicroScale RAM smoke results"
-  git push -u origin "$branch"
-  gh pr create --base main --head "$branch" \
-    --title "test: RAM-only MicroScale results $timestamp" \
-    --body "RAM-only CLI/daemon-version smoke results. No device identifiers, addresses, Tailnet data or credentials. Tests are not evidence of VPN routing functionality."
-else
-  printf 'To create a PR from this clone later:\n'
-  printf '  git switch -c test/ram-%s\n' "$timestamp"
-  printf '  git add %s && git commit -m "test: RAM smoke results"\n' "$relative"
-  printf '  git push -u origin HEAD && gh pr create --fill\n'
+if [[ "$submit" == false ]]; then
+  printf 'To submit: bash scripts/import-report.sh --submit "%s"\n' "$source_file"
+  exit 0
 fi
+
+branch="community/ram-$stamp-$(basename "$destination" .tsv | tail -c 7)"
+git switch -c "$branch"
+git add -- "$relative"
+git commit -m "test: submit community RAM measurements"
+if ! git push "$push_url" "HEAD:refs/heads/$branch"; then
+  fail 'Could not push to your fork. On your workstation run: gh auth setup-git, then retry git push'
+fi
+
+body='Community-submitted RAM-only Tailscale CLI/daemon smoke results.
+
+- Verification: strict TSV schema and checksum-pinned release test runner
+- Scope: version/help smoke checks only; NOT evidence of VPN dataplane, Exit Node, reboot persistence or endurance
+- Source: contributor-reported, not independently hardware-attested
+- Privacy: no hostnames, IP addresses, auth keys, Tailnet data or raw process logs
+
+Please check the submitted TSV and device details before merging.'
+if [[ -n "$device" ]]; then
+  body="$body
+
+- Contributor-disclosed device model: $device (unverified, no serial numbers)"
+fi
+gh pr create --repo "$UPSTREAM" --base main --head "$login:$branch" \
+  --title "test: community RAM report ($stamp)" --body "$body" ||
+  fail 'Branch pushed, but GitHub PR creation failed; create a PR from the pushed branch'

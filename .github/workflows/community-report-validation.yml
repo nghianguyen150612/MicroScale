@@ -1,0 +1,46 @@
+name: Validate community RAM reports
+
+on:
+  pull_request:
+    paths:
+      - 'reports/community/*.tsv'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate submitted TSV (not hardware attestation)
+    runs-on: ubuntu-24.04
+    steps:
+      # Check out the trusted base revision, never run scripts from a forked PR.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check PR report files against trusted validator
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/pull/$PR_NUMBER/head"
+          head_sha="$(git rev-parse FETCH_HEAD)"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          count=0
+          while IFS= read -r -d '' path; do
+            [[ "$path" == reports/community/*.tsv ]] || {
+              echo "Report PR must contain only reports/community/*.tsv files: $path" >&2
+              exit 1
+            }
+            count=$((count + 1))
+            [[ "$count" -le 10 ]] || { echo 'Too many report files' >&2; exit 1; }
+            git show "$head_sha:$path" > "$tmp/report.tsv"
+            bash scripts/import-report.sh --validate-only "$tmp/report.tsv"
+          done < <(git diff --name-only -z "$(git merge-base HEAD "$head_sha")" "$head_sha")
+          [[ "$count" -gt 0 ]] || { echo 'No report data to validate' >&2; exit 1; }
+          echo "PASS: $count file(s) satisfy the sanitized TSV schema"
+          echo 'Contributor-provided measurements are NOT hardware-attested.'

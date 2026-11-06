@@ -41,6 +41,9 @@ jobs:
       - name: Validate RAM device reports and PR collection
         run: bash tests/test_device_reports.sh
 
+      - name: Test fork-based community PR submission
+        run: bash tests/test_public_contributions.sh
+
       - name: Install benchmark tools and packer
         shell: bash
         run: |
