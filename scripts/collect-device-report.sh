@@ -4,14 +4,26 @@
 set -Eeuo pipefail
 fail() { printf 'MicroScale collector: %s\n' "$*" >&2; exit 1; }
 submit=false
-if [[ "\${1:-}" == "--submit" ]]; then submit=true; shift; fi
+device=""
+while (($#)); do
+  case "$1" in
+    --submit) submit=true; shift ;;
+    --device)
+      (($# >= 2)) || fail 'Provide an optional public device model'
+      device="$2"; shift 2 ;;
+    -h|--help)
+      printf 'Usage: bash scripts/collect-device-report.sh [--submit] [--device MODEL] user@host [small|micro|extreme|all|staged]\n'
+      exit 0 ;;
+    *) break ;;
+  esac
+done
 [[ $# -ge 1 && $# -le 2 ]] ||
-  fail "Usage: bash scripts/collect-device-report.sh [--submit] user@host [small|micro|extreme|all|staged]"
+  fail "Usage: bash scripts/collect-device-report.sh [--submit] [--device MODEL] user@host [small|micro|extreme|all|staged]"
 target="$1"
-profile="\${2:-all}"
+profile="${2:-all}"
 [[ "$target" =~ ^[A-Za-z0-9_.@:-]+$ && "$target" != -* ]] || fail 'Invalid SSH target'
 [[ "$profile" =~ ^(small|micro|extreme|all|staged)$ ]] || fail 'Invalid RAM test profile'
-root="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [[ -f "$root/scripts/import-report.sh" ]] || fail 'Run from a MicroScale checkout'
 for tool in ssh sha256sum bash; do command -v "$tool" >/dev/null || fail "Missing $tool"; done
 if [[ "$submit" == true ]]; then
@@ -57,7 +69,9 @@ bash "$root/scripts/import-report.sh" --validate-only "$workdir/device.tsv" ||
 printf 'Validated report from %s:\n' "$target"
 cat "$workdir/device.tsv"
 if [[ "$submit" == true ]]; then
-  bash "$root/scripts/import-report.sh" --submit "$workdir/device.tsv"
+  args=(--submit)
+  [[ -z "$device" ]] || args+=(--device "$device")
+  bash "$root/scripts/import-report.sh" "${args[@]}" "$workdir/device.tsv"
   printf 'Report submitted as a reviewable GitHub PR.\n'
 else
   printf 'To upload this report into the repository, rerun with --submit.\n'
