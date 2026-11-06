@@ -3,15 +3,25 @@
 set -eu
 umask 077
 
-RELEASE_TAG=v0.2.0
+RELEASE_TAG=v0.2.1
 REPO=nghianguyen150612/MicroScale
 engine_sha=b9b9bd988b0064eebcb1217e11b068e8176f2a1a89895a26c2781535b52a680f
 
 fail() { printf 'MicroScale bootstrap: %s\n' "$*" >&2; exit 1; }
-awk '$2=="/tmp" && $3=="tmpfs" {ok=1} END{exit !ok}' /proc/mounts ||
-    fail 'Refusing to stage lifecycle manager outside RAM-backed /tmp'
+ram_base=''
+if awk '$2=="/tmp" && $3=="tmpfs" {ok=1} END{exit !ok}' /proc/mounts; then
+    ram_base=/tmp
+elif [ "${1:-}" = test-ram ] || [ "${1:-}" = test ] ||
+     [ "${1:-}" = report ] || [ "${1:-}" = test-report ]; then
+    awk '$2=="/dev/shm" && $3=="tmpfs" {ok=1} END{exit !ok}' /proc/mounts ||
+        fail 'No verified tmpfs for RAM test bootstrap'
+    ram_base=/dev/shm
+else
+    fail 'Persistent installer requires RAM-backed /tmp'
+fi
 command -v sha256sum >/dev/null 2>&1 || fail 'sha256sum is required'
-stage="$(mktemp -d /tmp/microscale-bootstrap.XXXXXX)" || fail 'Cannot allocate temporary directory'
+stage="$(mktemp -d "$ram_base/microscale-bootstrap.XXXXXX")" ||
+    fail 'Cannot allocate temporary directory'
 trap 'rm -rf "$stage"' 0
 trap 'exit 130' INT
 trap 'exit 143' TERM HUP
