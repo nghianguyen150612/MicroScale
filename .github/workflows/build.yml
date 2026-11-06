@@ -35,6 +35,9 @@ jobs:
       - name: Check manager lifecycle and checksum pin
         run: bash tests/test_manager.sh
 
+      - name: Test RAM-stage lifecycle and NAND apply gating
+        run: bash tests/test_ram_stage.sh
+
       - name: Install benchmark tools and packer
         shell: bash
         run: |

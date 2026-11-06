@@ -21,6 +21,7 @@ Các router thường có flash và RAM hạn chế. MicroScale đóng gói CLI 
 - **Cài đặt một lệnh** — menu chọn profile, có lệnh quản lý ngắn `microscale`.
 - **Bootstrap có kiểm tra SHA256** — chỉ chạy manager sau khi xác minh file.
 - **Quản lý vòng đời** — cài, cập nhật, repair, status, diagnostics, doctor và uninstall.
+- **Cài vào RAM trước** — lưu binary đã kiểm tra SHA256 tại `/tmp/microscale-stage`; chạy lại installer để áp dụng chính binary này vào NAND.
 - **Thử nghiệm trong RAM** — không ghi NAND, không thay daemon đang chạy.
 - **Không cấu hình VPN** — không can thiệp DNS, firewall, route, dịch vụ hoặc Tailscale state.
 
@@ -29,10 +30,19 @@ Các router thường có flash và RAM hạn chế. MicroScale đóng gói CLI 
 > Cần OpenWrt **ARM64**, SSH qua LAN, quyền root, HTTPS và đủ dung lượng overlay. Đọc phần [tương thích](#khả-năng-tương-thích) trước khi cài.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.6/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.0-rc.7/install.sh && sh /tmp/microscale-install.sh
 ```
 
-Chọn **Install/Update**, tiếp đến chọn Small, Micro hoặc Extreme. Sau khi cài có thể gọi trực tiếp:
+Chọn **Install to RAM**, tiếp đến chọn Small, Micro hoặc Extreme. Thử bản đang nằm trong RAM:
+
+```sh
+/tmp/microscale-stage/bin/tailscale version
+/tmp/microscale-stage/bin/tailscaled --version
+```
+
+**Chạy lại lệnh installer**. Khi bản RAM còn nguyên checksum, menu sẽ thêm mục **Apply RAM to NAND**. Chỉ bước này (hoặc chọn cài thẳng NAND) mới thay binary hệ thống. Manager không restart hay cấu hình Tailscale.
+
+Sau khi apply vào NAND, có thể gọi trực tiếp:
 
 ```sh
 microscale
@@ -63,6 +73,10 @@ Trạng thái của MicroScale nằm tại `/etc/microscale`, phù hợp hơn v�
 ## Quản lý bằng CLI
 
 ```sh
+microscale install-ram micro
+microscale ram-status
+microscale apply   # Ghi bản đã xác minh từ RAM vào NAND
+microscale clear-ram
 microscale install micro
 microscale update micro
 microscale repair
@@ -73,7 +87,7 @@ microscale version
 microscale uninstall
 ```
 
-Các lệnh ghi file yêu cầu root và xác nhận tương tác. Uninstall phục hồi binary ban đầu, giữ nguyên toàn bộ cấu hình VPN. Xem [chi tiết installer](docs/ONE-CLICK-INSTALL.md).
+Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác ghi NAND yêu cầu root và xác nhận tương tác. Uninstall phục hồi binary ban đầu, giữ nguyên toàn bộ cấu hình VPN. Xem [chi tiết installer](docs/ONE-CLICK-INSTALL.md).
 
 ## Ba mức tối ưu
 
@@ -98,7 +112,7 @@ Các lệnh ghi file yêu cầu root và xác nhận tương tác. Uninstall ph�
 
 ## Thử trong RAM mà không cài đặt
 
-Dùng [`ram-test.sh`](docs/RAM-TEST.md) và kiểm tra SHA256 từ release. Script thử binary trong tmpfs, không thay file Tailscale hiện tại.
+Có thể dùng **Install to RAM** để thử trước rồi Apply sang NAND, hoặc dùng [`ram-test.sh`](docs/RAM-TEST.md) để tự động đo CLI trong tmpfs. Cả hai không thay daemon hệ thống.
 
 ## Tự build
 
