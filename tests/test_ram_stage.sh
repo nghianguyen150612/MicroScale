@@ -56,7 +56,7 @@ apply_fn="$(sed -n '/^apply_ram() {/,/^}/p' scripts/manager.sh)"
 grep -q 'ram_stage_ready' <<< "$apply_fn"
 grep -q 'cp "$RAM_ROOT/microscale"' <<< "$apply_fn"
 grep -q 'nand_commit' <<< "$apply_fn"
-if grep -Eq 'download_binary|tailscale up|service .*restart' <<< "$apply_fn"; then
+if grep -Eq '^[[:space:]]*(download_binary|service|systemctl|tailscale up|tailscale set|uci|iptables|nft)([[:space:]]|$)' <<< "$apply_fn"; then
     echo 'FAIL: apply redownloads or configures Tailscale' >&2
     exit 1
 fi
