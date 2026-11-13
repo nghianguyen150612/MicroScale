@@ -11,14 +11,20 @@ actual="$(sha256sum scripts/manager.sh | awk '{print $1}')"
     echo "FAIL: bootstrap manager checksum pin is outdated" >&2
     exit 1
 }
-[[ "$(sed -n 's/^RELEASE_TAG=//p' scripts/install.sh)" == v0.2.1 ]]
-[[ "$(sed -n 's/^TAG=//p' scripts/manager.sh)" == v0.2.1 ]]
+[[ "$(sed -n 's/^RELEASE_TAG=//p' scripts/install.sh)" == v0.2.2 ]]
+[[ "$(sed -n 's/^TAG=//p' scripts/manager.sh)" == v0.2.2 ]]
 
-sh scripts/manager.sh help | grep -q 'microscale'
-sh scripts/manager.sh version | grep -q 'MicroScale manager'
-sh scripts/manager.sh status | grep -q 'Managed install'
-sh scripts/manager.sh ram-status | grep -q 'RAM stage'
-sh scripts/manager.sh help | grep -q 'install-ram'
+# Avoid `grep -q` closing a pipeline before BusyBox sh finishes writing;
+# under pipefail the resulting SIGPIPE made this check intermittent.
+help_output="$(sh scripts/manager.sh help)"
+version_output="$(sh scripts/manager.sh version)"
+status_output="$(sh scripts/manager.sh status)"
+ram_output="$(sh scripts/manager.sh ram-status)"
+[[ "$help_output" == *microscale* ]]
+[[ "$help_output" == *install-ram* ]]
+[[ "$version_output" == *'MicroScale manager'* ]]
+[[ "$status_output" == *'Managed install'* ]]
+[[ "$ram_output" == *'RAM stage'* ]]
 
 # The OpenWrt layout and symlink must be explicitly implemented, not merely documented.
 for literal in \
@@ -38,6 +44,7 @@ done
 # Unrelated commands must never be replaced by the microscale alias.
 grep -Fq 'ensure_command_available' scripts/manager.sh
 grep -Fq 'readlink "$COMMAND"' scripts/manager.sh
+grep -Fq 'External backup mode:' scripts/manager.sh
 
 # Guard against mismatched staging paths ($ instead of $$) on BusyBox ash.
 if grep -En '\.(next|restore)\.\$["[:space:]]' scripts/manager.sh; then

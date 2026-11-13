@@ -42,13 +42,23 @@ binary="$output_dir/microscale"
 if [[ "$profile" == small ]]; then
   build_args=(--box --strip)
 else
-  # Reduced features require target-device validation.
-  build_args=(--box --extra-small)
+  # NR3053 requires userspace netstack, SOCKS5, Tailscale Serve and SSH.
+  # Upstream --extra-small omits these, so generate its supported feature
+  # omission tags, preserving exactly our declared hardware feature set.
+  : "${MICRO_KEEP_FEATURES:?Profile must declare MICRO_KEEP_FEATURES}"
+  feature_tags="$(cd "$upstream_dir" && ./tool/go run ./cmd/featuretags --min --add="$MICRO_KEEP_FEATURES")"
+  [[ "$feature_tags" == *ts_include_cli* ]] || fail 'Required combined CLI tag missing'
+  build_args=(--strip)
 fi
 (
   cd "$upstream_dir"
-  CGO_ENABLED=0 GOOS="$target_goos" GOARCH="$target_goarch" TS_USE_TOOLCHAIN=1 \
-    ./build_dist.sh "${build_args[@]}" -o "$binary" ./cmd/tailscaled
+  if [[ "$profile" == small ]]; then
+    CGO_ENABLED=0 GOOS="$target_goos" GOARCH="$target_goarch" TS_USE_TOOLCHAIN=1 \
+      ./build_dist.sh "${build_args[@]}" -o "$binary" ./cmd/tailscaled
+  else
+    CGO_ENABLED=0 GOOS="$target_goos" GOARCH="$target_goarch" TS_USE_TOOLCHAIN=1 \
+      TAGS="$feature_tags" ./build_dist.sh "${build_args[@]}" -o "$binary" ./cmd/tailscaled
+  fi
 )
 unpacked_bytes="$(stat -c '%s' "$binary")"
 if [[ "$profile" == extreme ]]; then
@@ -68,8 +78,9 @@ Target: $target_goos/$target_goarch
 CGO_ENABLED: 0
 Combined CLI/daemon: yes (--box/ts_include_cli)
 Build flags: ${build_args[*]}
+Included features: $(if [[ "$profile" == small ]]; then echo full; else echo "$MICRO_KEEP_FEATURES"; fi)
 UPX: $(if [[ "$profile" == extreme ]]; then echo yes; else echo no; fi)
-Feature qualification: NOT COMPLETE for NR3053
+Feature qualification: NR3053 VPN, Serve and SSH require live device validation
 INFO
 printf 'profile\tarch\tbefore_upx_bytes\telf_bytes\n%s\t%s\t%s\t%s\n' \
  "$profile" "$target_goarch" "$unpacked_bytes" "$final_bytes" > "$output_dir/size.tsv"

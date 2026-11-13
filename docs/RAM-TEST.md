@@ -6,8 +6,8 @@ The same test runner checks the Tailscale CLI/daemon version and help output on 
 
 ```sh
 cd /tmp
-wget -O install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh
-wget -O install.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh.sha256
+wget -O install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2/install.sh
+wget -O install.sh.sha256 https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2/install.sh.sha256
 sha256sum -c install.sh.sha256
 sh install.sh test-ram all
 sh install.sh report

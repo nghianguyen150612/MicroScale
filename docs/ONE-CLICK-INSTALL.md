@@ -7,7 +7,7 @@ The MicroScale installer uses a checksum-pinned bootstrap, a separate POSIX shel
 Run as root over local LAN SSH:
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2/install.sh && sh /tmp/microscale-install.sh
 ```
 
 The bootstrap downloads the release's `manager.sh`, checks the SHA256 digest pinned in `install.sh`, then runs the verified local copy. **Choose Install to RAM first**. Pick the profile and confirm staging. Restart the same installer to apply the verified RAM stage to NAND.
@@ -87,3 +87,21 @@ A backup is kept persistently in `/etc/microscale/original`; because the device 
 RC5 stored the manager and backups at `/var/lib/microscale`. On OpenWrt this may be volatile, so **do not reboot or delete that directory before inspecting it** if you previously used RC5 for a persistent installation. RC6 refuses to install over a detected RC5 install-state without migration. Make a backup of original files and confirm the existing state first. The change of paths is not an automatic data migration.
 
 For quick CLI measurement rather than a staged install, use the separate [RAM-only smoke tests](RAM-TEST.md). Real NR3053 Exit Node/subnet routing and RC6 installer transactions have not yet been device-validated.
+
+## External-backup NR3053 adoption (v0.2.2)
+
+The generic `microscale install`/`apply` transaction insists on a full on-device
+rollback backup. With the original CLI and daemon totaling nearly 40 MiB, this
+exceeds NR3053's free overlay. **Do not bypass `check_space`** to run a generic
+install. For an existing installation already manually replaced after checksummed
+backups on an Arch host, the maintainer can install the manager, write
+`/etc/microscale/install-state` and the `/etc/microscale/external-backup` marker,
+and use `microscale status`/`doctor` for observation.
+
+When that marker exists, `microscale uninstall` intentionally refuses to delete
+or restore anything because no local original binary exists. Restore is performed
+by SSH from the Arch host, using the independently SHA-256-verified original
+binaries and restarting only the existing `tailscale` service. Keep LAN SSH
+independent of Tailnet availability. Do not delete the Arch backup while the
+external marker is installed. This is an exceptional, manually reviewed device
+workflow, **not** the generic one-click installer.

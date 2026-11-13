@@ -31,7 +31,7 @@ Các router thường có flash và RAM hạn chế. MicroScale đóng gói CLI 
 > Cần OpenWrt **ARM64**, SSH qua LAN, quyền root, HTTPS và đủ dung lượng overlay. Đọc phần [tương thích](#khả-năng-tương-thích) trước khi cài.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2/install.sh && sh /tmp/microscale-install.sh
 ```
 
 Chọn **Install to RAM**, tiếp đến chọn Small, Micro hoặc Extreme. Thử bản đang nằm trong RAM:
@@ -98,8 +98,8 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 | Profile | Cách build | ELF ARM64* |
 | --- | --- | ---: |
 | **Small** | Đầy đủ tính năng, combined + strip | 40.00 MiB |
-| **Micro** | Loại bớt tính năng bằng build upstream | 12.75 MiB |
-| **Extreme** | Micro + UPX | 3.43 MiB |
+| **Micro** | Rút gọn nhưng tương thích NR3053 | 19.63 MiB |
+| **Extreme** | Micro + UPX | 5.08 MiB |
 
 *Kết quả đo từ Tailscale v1.104.5. Kích thước ELF khác dung lượng chiếm dụng thực tế trên NAND UBIFS.*
 
@@ -107,12 +107,21 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 
 | Môi trường | Mức kiểm chứng |
 | --- | --- |
-| NR3053, OpenWrt ARM64 | **PASS 6/6 lần thử CLI chạy trong RAM** |
-| NR3053 — VPN/Exit Node/Subnet Router | **Chưa kiểm chứng** |
+| NR3053, OpenWrt ARM64 | **Micro v0.2.2: userspace, SOCKS5, SSH prefs, 5 cổng Serve và reboot router PASS** |
+| NR3053 — Exit Node, uptime 24 giờ | **Chưa kiểm chứng** (Exit Node đã chủ động tắt) |
 | Linux x86_64 | Build và smoke test CI PASS, chưa thử VM 500 MiB |
 | Kiến trúc khác | Chưa có gói phát hành |
 
 [Log test NR3053](reports/openwrt-arm64-2026-11-03-rc4.md) cho thấy Micro có mức RSS CLI thấp nhất trong lượt đo đó. Đây không phải kết quả RAM daemon 24/7.
+
+**Lưu ý NR3053 (v0.2.2):** Profile rút gọn cũ thiếu `netstack` và
+`outboundproxy`, khiến dịch vụ Tailscale dạng userspace trên router không thể
+khởi động và làm mất SOCKS5. NR3053 còn dùng Tailscale Serve, SSH và cần Health tracker để hiển thị trạng thái online chính xác.
+Micro/Extreme v0.2.2 đã giữ lại những tính năng này qua feature tags upstream.
+**Binary v0.2.1 cũ không phù hợp với NR3053.** Bản Micro đã chạy thử thành công
+trên router với SOCKS5, VPN, Serve và tùy chọn SSH sau khi restart riêng dịch vụ.
+Đã PASS sau khi reboot router thật; chưa đủ bằng chứng uptime 24 giờ. Binary gốc được giữ trên Arch để rollback.
+
 
 ## Thử trong RAM mà không cài đặt
 

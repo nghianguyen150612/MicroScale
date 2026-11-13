@@ -4,7 +4,7 @@ set -Eeuo pipefail
 sh -n scripts/ram-test.sh
 bash -n scripts/import-report.sh
 sh scripts/ram-test.sh --help | grep -q 'small|micro|extreme|all'
-grep -q '^RELEASE_TAG=v0.2.1$' scripts/ram-test.sh
+grep -q '^RELEASE_TAG=v0.2.2$' scripts/ram-test.sh
 
 # Invalid/free-form records containing potentially private details must be rejected.
 sample="$(mktemp)"

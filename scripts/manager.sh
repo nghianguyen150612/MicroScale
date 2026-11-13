@@ -3,7 +3,7 @@
 set -eu
 umask 077
 
-TAG=v0.2.1
+TAG=v0.2.2
 REPO=nghianguyen150612/MicroScale
 DAEMON=/usr/sbin/tailscaled
 CLI=/usr/bin/tailscale
@@ -141,6 +141,12 @@ ensure_command_available() {
     fi
 }
 save_original() {
+    # Off-device rollback is supported only for a separately verified, manually
+    # adopted installation. Never turn its missing NAND backup into a new one.
+    if [ -f "$STATE/external-backup" ]; then
+        [ -f "$STATE/install-state" ] || die 'External backup marker without managed state; inspect before installing'
+        return 0
+    fi
     # Initial originals and state persist for uninstall, as in Beszel's manager.
     # Abort rather than installing without a rollback record.
     [ -f "$STATE/install-state" ] && return 0
@@ -365,6 +371,9 @@ clear_ram() {
     info 'RAM stage deleted; NAND and running Tailscale unchanged'
 }
 status() {
+    if [ -f "$STATE/external-backup" ]; then
+        info 'Rollback: external original-binary backup (host-side restore required)'
+    fi
     if [ -r "$STATE/install-state" ]; then
         info "Managed install: $(tr '\n' ' ' < "$STATE/install-state")"
     else
@@ -407,6 +416,9 @@ diagnostics() {
 uninstall() {
     require_platform
     [ -r "$STATE/install-state" ] || die 'No managed installation; nothing removed'
+    # A manually adopted external backup cannot be restored from the router:
+    # do not remove the working binary or pretend rollback is possible locally.
+    [ ! -f "$STATE/external-backup" ] || die 'External backup mode: restore verified originals from the Arch host over LAN; no router-side uninstall performed'
     [ -d "$ORIGINAL" ] || die 'Original rollback directory missing'
     ask 'Restore original Tailscale binaries? [y/N]: '
     case "$answer" in y|Y|yes|YES) ;; *) info 'Cancelled'; return 0 ;; esac

@@ -15,6 +15,15 @@ for profile in small micro extreme; do
   [[ "$UPSTREAM_VERSION" == "$expected_version" ]] || exit 1
   [[ "$UPSTREAM_COMMIT" == "$expected_commit" ]] || exit 1
 done
+for profile in micro extreme; do
+  source "profiles/$profile.env"
+  for required in cli osrouter nattraversal netstack outboundproxy health ssh serve acme dns portmapper peerapiserver peerapiclient; do
+    case ",$MICRO_KEEP_FEATURES," in
+      *,"$required",*) ;;
+      *) echo "Missing required NR3053 feature: $required ($profile)" >&2; exit 1 ;;
+    esac
+  done
+done
 if bash scripts/build.sh invalid >/dev/null 2>&1; then
   echo "Invalid profile must fail" >&2
   exit 1

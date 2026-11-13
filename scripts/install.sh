@@ -3,9 +3,9 @@
 set -eu
 umask 077
 
-RELEASE_TAG=v0.2.1
+RELEASE_TAG=v0.2.2
 REPO=nghianguyen150612/MicroScale
-engine_sha=b1889431b98dff89ef8fd2bc1ab180ab55708ae09e5d38dd36e1166eeaa32a2d
+engine_sha=6ca5035240df8cff60f1761c854c85f086d6c0d09adcc9a809c5eab4e5572bf3
 
 fail() { printf 'MicroScale bootstrap: %s\n' "$*" >&2; exit 1; }
 ram_base=''

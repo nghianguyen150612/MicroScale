@@ -4,7 +4,7 @@
 set -eu
 umask 077
 
-RELEASE_TAG=v0.2.1
+RELEASE_TAG=v0.2.2
 REPOSITORY=nghianguyen150612/MicroScale
 
 fail() { printf 'MicroScale RAM test: %s\n' "$*" >&2; exit 1; }

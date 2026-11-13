@@ -37,7 +37,7 @@ else
   workdir="$(mktemp -d)"
 fi
 trap 'rm -rf "$workdir"' EXIT
-base=https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1
+base=https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2
 download() {
   if command -v curl >/dev/null; then
     curl -fLsS --connect-timeout 15 --max-time 180 -o "$1" "$2"
