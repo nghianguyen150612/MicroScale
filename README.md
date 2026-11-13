@@ -98,8 +98,8 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 | Profile | Optimization | ARM64 executable* |
 | --- | --- | ---: |
 | **Small** | Full upstream feature set, stripped combined binary | 40.00 MiB |
-| **Micro** | Upstream reduced-feature, NR3053-compatible | 19.50 MiB |
-| **Extreme** | Micro + UPX packing | 5.06 MiB |
+| **Micro** | Upstream reduced-feature, NR3053-compatible | 19.63 MiB |
+| **Extreme** | Micro + UPX packing | 5.08 MiB |
 
 *Measured with pinned Tailscale v1.104.5. ELF size is not the same as NAND usage on compressed filesystems.*
 
@@ -117,7 +117,7 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 **NR3053 deployment note (v0.2.2):** The original reduced build omits
 `netstack` and `outboundproxy`. This prevents OpenWrt's userspace-only
 Tailscale service from starting and removes its localhost SOCKS5 listener.
-The NR3053 also uses Tailscale Serve and SSH. The `micro` and
+The NR3053 also uses Tailscale Serve and SSH, and needs health tracking for an accurate local online status. The `micro` and
 `extreme` build profiles now retain those features via upstream's feature-tag
 mechanism. The old v0.2.1 binaries remain incompatible and have not been overwritten.
 Micro v0.2.2 was tested on NR3053 after restart with working SSH/LAN, Tailscale

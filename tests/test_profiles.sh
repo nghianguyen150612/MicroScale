@@ -17,7 +17,7 @@ for profile in small micro extreme; do
 done
 for profile in micro extreme; do
   source "profiles/$profile.env"
-  for required in cli osrouter nattraversal netstack outboundproxy ssh serve acme dns portmapper peerapiserver peerapiclient; do
+  for required in cli osrouter nattraversal netstack outboundproxy health ssh serve acme dns portmapper peerapiserver peerapiclient; do
     case ",$MICRO_KEEP_FEATURES," in
       *,"$required",*) ;;
       *) echo "Missing required NR3053 feature: $required ($profile)" >&2; exit 1 ;;

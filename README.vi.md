@@ -98,8 +98,8 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 | Profile | Cách build | ELF ARM64* |
 | --- | --- | ---: |
 | **Small** | Đầy đủ tính năng, combined + strip | 40.00 MiB |
-| **Micro** | Rút gọn nhưng tương thích NR3053 | 19.50 MiB |
-| **Extreme** | Micro + UPX | 5.06 MiB |
+| **Micro** | Rút gọn nhưng tương thích NR3053 | 19.63 MiB |
+| **Extreme** | Micro + UPX | 5.08 MiB |
 
 *Kết quả đo từ Tailscale v1.104.5. Kích thước ELF khác dung lượng chiếm dụng thực tế trên NAND UBIFS.*
 
@@ -116,7 +116,7 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 
 **Lưu ý NR3053 (v0.2.2):** Profile rút gọn cũ thiếu `netstack` và
 `outboundproxy`, khiến dịch vụ Tailscale dạng userspace trên router không thể
-khởi động và làm mất SOCKS5. NR3053 còn đang dùng Tailscale Serve và SSH.
+khởi động và làm mất SOCKS5. NR3053 còn dùng Tailscale Serve, SSH và cần Health tracker để hiển thị trạng thái online chính xác.
 Micro/Extreme v0.2.2 đã giữ lại những tính năng này qua feature tags upstream.
 **Binary v0.2.1 cũ không phù hợp với NR3053.** Bản Micro đã chạy thử thành công
 trên router với SOCKS5, VPN, Serve và tùy chọn SSH sau khi restart riêng dịch vụ.
