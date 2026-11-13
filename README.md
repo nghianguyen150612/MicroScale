@@ -31,7 +31,7 @@ Embedded devices often have limited flash and RAM. MicroScale packages a combine
 > Requires root, a supported **ARM64 OpenWrt** system, working HTTPS download tools, writable overlay space and direct LAN SSH. Review the [compatibility notes](#compatibility) first.
 
 ```sh
-wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.1/install.sh && sh /tmp/microscale-install.sh
+wget -O /tmp/microscale-install.sh https://github.com/nghianguyen150612/MicroScale/releases/download/v0.2.2/install.sh && sh /tmp/microscale-install.sh
 ```
 
 Choose **Install to RAM** and a Small/Micro/Extreme profile. Test the staged binary:
@@ -98,8 +98,8 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 | Profile | Optimization | ARM64 executable* |
 | --- | --- | ---: |
 | **Small** | Full upstream feature set, stripped combined binary | 40.00 MiB |
-| **Micro** | Upstream reduced-feature build | 12.75 MiB |
-| **Extreme** | Micro + UPX packing | 3.43 MiB |
+| **Micro** | Upstream reduced-feature, NR3053-compatible | 19.50 MiB |
+| **Extreme** | Micro + UPX packing | 5.06 MiB |
 
 *Measured with pinned Tailscale v1.104.5. ELF size is not the same as NAND usage on compressed filesystems.*
 
@@ -107,12 +107,24 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 
 | Platform | Status |
 | --- | --- |
-| OpenWrt ARM64 (NR3053) | **6/6 RAM-only CLI smoke tests PASS** |
-| OpenWrt ARM64 — full VPN service / Exit Node | **Not yet validated** |
+| OpenWrt ARM64 (NR3053) | **Micro v0.2.2 userspace daemon, SOCKS5, SSH preference and 5 Serve endpoints verified after service restart** |
+| OpenWrt ARM64 — Exit Node / 24-hour uptime / reboot | **Not validated** (Exit Node intentionally off) |
 | Linux x86_64 | Build and CI smoke tests PASS; 500 MiB VM test pending |
 | Other architectures | Not currently packaged |
 
 [Physical NR3053 results](reports/openwrt-arm64-2026-11-03-rc4.md) show Micro had the lowest measured one-shot CLI RSS. These results do not establish daemon uptime, Exit Node support or subnet routing.
+
+**NR3053 deployment note (v0.2.2):** The original reduced build omits
+`netstack` and `outboundproxy`. This prevents OpenWrt's userspace-only
+Tailscale service from starting and removes its localhost SOCKS5 listener.
+The NR3053 also uses Tailscale Serve and SSH. The `micro` and
+`extreme` build profiles now retain those features via upstream's feature-tag
+mechanism. The old v0.2.1 binaries remain incompatible and have not been overwritten.
+Micro v0.2.2 was tested on NR3053 after restart with working SSH/LAN, Tailscale
+VPN, SOCKS5, and all five Serve endpoints; long-term uptime and reboot are not
+claimed. Preserve an external original-binary backup
+when the overlay cannot hold an on-device rollback copy.
+
 
 ## Test without installing
 

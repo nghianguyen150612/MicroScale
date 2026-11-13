@@ -69,6 +69,10 @@ jobs:
       - name: Verify native CLI and daemon
         run: bash scripts/verify.sh "dist/${{ matrix.profile }}/linux-amd64/microscale" amd64
 
+      - name: Verify userspace netstack and SOCKS5 on native reduced builds
+        if: matrix.profile != 'small'
+        run: bash tests/test_router_runtime.sh "$(pwd)/dist/${{ matrix.profile }}/linux-amd64/microscale"
+
       - name: Benchmark native runtime (NOT NR3053)
         run: bash scripts/benchmark.sh "${{ matrix.profile }}" amd64 "dist/${{ matrix.profile }}/linux-amd64/microscale"
 
