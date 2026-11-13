@@ -107,8 +107,8 @@ Bản cài RAM chỉ ghi vào `/tmp` (tmpfs), mất sau reboot. Các thao tác g
 
 | Môi trường | Mức kiểm chứng |
 | --- | --- |
-| NR3053, OpenWrt ARM64 | **Micro v0.2.2: daemon userspace, SOCKS5, SSH prefs và 5 cổng Serve sau restart PASS** |
-| NR3053 — Exit Node, 24 giờ, reboot | **Chưa kiểm chứng** (Exit Node đã chủ động tắt) |
+| NR3053, OpenWrt ARM64 | **Micro v0.2.2: userspace, SOCKS5, SSH prefs, 5 cổng Serve và reboot router PASS** |
+| NR3053 — Exit Node, uptime 24 giờ | **Chưa kiểm chứng** (Exit Node đã chủ động tắt) |
 | Linux x86_64 | Build và smoke test CI PASS, chưa thử VM 500 MiB |
 | Kiến trúc khác | Chưa có gói phát hành |
 
@@ -120,7 +120,7 @@ khởi động và làm mất SOCKS5. NR3053 còn dùng Tailscale Serve, SSH và
 Micro/Extreme v0.2.2 đã giữ lại những tính năng này qua feature tags upstream.
 **Binary v0.2.1 cũ không phù hợp với NR3053.** Bản Micro đã chạy thử thành công
 trên router với SOCKS5, VPN, Serve và tùy chọn SSH sau khi restart riêng dịch vụ.
-Chưa kiểm thử uptime 24 giờ hoặc reboot; binary gốc được giữ trên Arch để rollback.
+Đã PASS sau khi reboot router thật; chưa đủ bằng chứng uptime 24 giờ. Binary gốc được giữ trên Arch để rollback.
 
 
 ## Thử trong RAM mà không cài đặt

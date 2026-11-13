@@ -187,12 +187,17 @@ jobs:
           checks, binary-only installer and RAM staging workflow. All six build targets
           and host-side smoke tests must pass before this release is published.
 
-          Device-side validation remains limited to six CLI smoke tests on NR3053.
-          Live login, Exit Node, Subnet Router, reconnect, 24/7 daemon operation,
-          reboot persistence and NAND transaction recovery are NOT certified.
-          Micro and Extreme use reduced/packed builds and remain experimental.
+          On one physical NR3053, Micro was installed with a verified external
+          original-binary backup and passed userspace networking, SOCKS5, five
+          Tailscale Serve endpoints, tailnet peer reachability, service restart,
+          and one full router reboot (including automatic Tailscale startup).
+          See reports/nr3053-micro-v022-2026-11-13.md for the scoped evidence.
+          Exit Node was intentionally disabled. Subnet Router, continuous 24/7
+          uptime, all optional Tailscale features, and generic NAND transaction
+          recovery are NOT certified. Extreme was not installed on the router.
+          Micro and Extreme are reduced/packed builds and remain experimental.
           Do not deploy to your only remote management path without local SSH and
-          verified backups. The installer does not control the Tailscale service.
+          verified backups. The installer never controls the Tailscale service.
           NOTES
       - name: Publish stable release
         shell: bash

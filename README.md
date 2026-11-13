@@ -107,8 +107,8 @@ RAM staging writes only under `/tmp` (tmpfs) and disappears after reboot. NAND o
 
 | Platform | Status |
 | --- | --- |
-| OpenWrt ARM64 (NR3053) | **Micro v0.2.2 userspace daemon, SOCKS5, SSH preference and 5 Serve endpoints verified after service restart** |
-| OpenWrt ARM64 — Exit Node / 24-hour uptime / reboot | **Not validated** (Exit Node intentionally off) |
+| OpenWrt ARM64 (NR3053) | **Micro v0.2.2: userspace daemon, SOCKS5, SSH preference, 5 Serve endpoints and full router reboot PASS** |
+| OpenWrt ARM64 — Exit Node / 24-hour uptime | **Not validated** (Exit Node intentionally off) |
 | Linux x86_64 | Build and CI smoke tests PASS; 500 MiB VM test pending |
 | Other architectures | Not currently packaged |
 
@@ -121,8 +121,8 @@ The NR3053 also uses Tailscale Serve and SSH, and needs health tracking for an a
 `extreme` build profiles now retain those features via upstream's feature-tag
 mechanism. The old v0.2.1 binaries remain incompatible and have not been overwritten.
 Micro v0.2.2 was tested on NR3053 after restart with working SSH/LAN, Tailscale
-VPN, SOCKS5, and all five Serve endpoints; long-term uptime and reboot are not
-claimed. Preserve an external original-binary backup
+VPN, SOCKS5, and all five Serve endpoints; a full router reboot also PASSed.
+Long-term uptime beyond this observation window is not claimed. Preserve an external original-binary backup
 when the overlay cannot hold an on-device rollback copy.
 
 
